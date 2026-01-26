@@ -1,0 +1,405 @@
+OVERALL PROJECT IDEA (IN SIMPLE WORDS)
+
+Your project is a video-based intelligent Kabaddi analysis system that:
+
+Identifies the raider
+
+Monitors injury risk
+
+Detects falls, collisions, and dangerous movements
+
+Enforces Kabaddi raider rules
+
+Works without wearable sensors
+
+Produces annotated videos and alerts
+
+All decisions are made using computer vision + motion analysis + rule-based logic.
+
+🧠 TECHNOLOGIES USED & HOW THEY WORK IN YOUR PROJECT
+
+I’ll go module by module, exactly matching your pipeline.
+
+1️⃣ Video Input & Processing (OpenCV)
+Technology
+
+OpenCV
+
+Why it is used
+
+Read video frames
+
+Resize / preprocess frames
+
+Draw annotations (boxes, skeletons, lines, alerts)
+
+Save output videos
+
+In your project
+
+Reads Kabaddi match / raid clip
+
+Sends frames to all downstream modules
+
+Draws:
+
+Player bounding boxes
+
+Raider highlight
+
+Court lines
+
+Rule violation alerts
+
+Injury risk indicators
+
+👉 OpenCV is the base backbone for video handling.
+
+2️⃣ Player Detection (YOLO – Deep Learning)
+Technology
+
+YOLO (You Only Look Once) object detection model
+
+Why it is used
+
+Detects all players in each video frame
+
+Fast and suitable for real-time analysis
+
+Robust to occlusion and motion blur
+
+In your project
+
+YOLO detects all persons in the Kabaddi court
+
+Outputs bounding boxes for each player
+
+These bounding boxes are used for:
+
+Tracking
+
+Raider identification
+
+Defender interaction analysis
+
+👉 This gives the system awareness of all players in the scene.
+
+3️⃣ Multi-Object Tracking (SORT + Kalman Filter)
+Technology
+
+SORT (Simple Online and Realtime Tracking)
+
+Kalman Filter (inside SORT)
+
+Why it is used
+
+YOLO detects players per frame, but IDs change
+
+Tracking is needed to maintain consistent player identities
+
+In your project
+
+SORT assigns a unique ID to each player
+
+Kalman Filter predicts player movement between frames
+
+Ensures:
+
+Smooth trajectories
+
+Stable IDs even during occlusion
+
+👉 Without this, you cannot analyze motion over time.
+
+4️⃣ Raider Identification (Motion-Based Logic)
+Technology
+
+Rule-based motion analysis
+
+Trajectory analysis
+
+Why it is used
+
+Kabaddi has only one raider
+
+Raider shows distinct motion patterns
+
+In your project
+
+Raider is identified using:
+
+Directional commitment (moving with intent)
+
+Speed dominance (top 25% fastest)
+
+Direction changes (dodging behavior)
+
+Spatial displacement (moving from one side toward defender group)
+
+All metrics are computed over a 90-frame window (~3 seconds).
+
+Once confidence ≥ 70%:
+
+Raider is locked for the entire clip
+
+👉 This avoids confusion with defenders and stabilizes analysis.
+
+5️⃣ Pose Estimation (MediaPipe – Deep Learning)
+Technology
+
+MediaPipe Pose (BlazePose)
+
+Why it is used
+
+Converts video frames into human skeletal joints
+
+Provides body keypoints (hips, knees, ankles, shoulders, hands, head)
+
+In your project
+
+Pose estimation is applied only to the raider
+
+Outputs 2D joint coordinates for each frame
+
+These joints are used to:
+
+Track movement
+
+Detect falls
+
+Check rule violations (feet crossing lines)
+
+Analyze biomechanical stress
+
+👉 Pose estimation turns video into biomechanical data.
+
+6️⃣ Kalman Filter for Joint Trajectory Smoothing
+Technology
+
+Kalman Filter (state estimation)
+
+Why it is used
+
+Raw pose data is noisy
+
+Small errors cause wrong velocity/acceleration
+
+In your project
+
+Each joint trajectory is smoothed using a Kalman Filter
+
+Enables reliable computation of:
+
+Velocity
+
+Acceleration
+
+Direction change
+
+Joint angles
+
+👉 This improves accuracy and stability of injury detection.
+
+7️⃣ Joint Trajectory & Kinematic Feature Extraction
+Technology
+
+Kinematic analysis
+
+Trajectory-based motion metrics
+
+Why it is used
+
+Injuries are related to how joints move over time
+
+In your project
+
+From joint trajectories you compute:
+
+Speed
+
+Acceleration
+
+Sudden deceleration
+
+Joint angles (hip, knee, torso)
+
+Direction changes
+
+These features feed into:
+
+Fall detection
+
+Impact detection
+
+Injury risk scoring
+
+👉 This is the core biomechanical intelligence of your system.
+
+8️⃣ Fall Detection (Rule-Based, Video Only)
+Technology
+
+Rule-based fall detection
+
+Inspired by CNN–LSTM fall detection papers
+
+Why rule-based?
+
+Explainable
+
+No training data required
+
+Real-time friendly
+
+In your project
+
+Falls are detected using:
+
+Hip height drop
+
+Torso tilt
+
+Head downward velocity
+
+Ground contact duration
+
+Sudden stop after motion
+
+Each indicator contributes to a fall severity score.
+
+👉 This detects dangerous events, not just injuries.
+
+9️⃣ Defender Interaction & Impact Detection
+Technology
+
+Spatial interaction analysis
+
+Relative velocity & distance metrics
+
+Why it is used
+
+Many Kabaddi injuries happen due to tackles and collisions
+
+In your project
+
+You analyze:
+
+Distance between raider and defenders
+
+Defender approach velocity
+
+Angle of approach
+
+Number of converging defenders
+
+This produces an impact severity score.
+
+👉 This models contact-based injury risk.
+
+🔟 Court Line Detection (Classical Computer Vision)
+Technology
+
+OpenCV
+
+Canny Edge Detection
+
+Hough Line Transform
+
+Why it is used
+
+Kabaddi rules depend on court boundaries
+
+Lines are white, straight, and fixed
+
+In your project
+
+Detect:
+
+Midline
+
+Baulk line
+
+Side lines
+
+End boundary
+
+Detect once from the first frame
+
+Reuse for all frames
+
+Draw on annotated video
+
+👉 Provides geometric reference for rule enforcement.
+
+1️⃣1️⃣ Raider Rule Imposing Engine (Rule-Based System)
+Technology
+
+Finite state machine
+
+Rule-based logic
+
+Temporal counters
+
+Why it is used
+
+Kabaddi has strict raider rules
+
+Existing injury systems ignore rules
+
+In your project
+
+Rules enforced:
+
+Enter defender court
+
+Touch baulk line
+
+Sideline restrictions
+
+End boundary restriction
+
+Illegal contact (hair/t-shirt pull – approximated)
+
+Raid time limit (30 seconds)
+
+Violations result in:
+
+Player marked OUT
+
+Alerts generated
+
+Annotated evidence
+
+👉 This makes your project unique and sport-aware.
+
+1️⃣2️⃣ Injury Risk Scoring & Validation
+Technology
+
+Rule-based risk fusion
+
+AUC (Area Under Curve)
+
+ACWR (Acute:Chronic Workload Ratio – proxy)
+
+Why it is used
+
+Combine multiple risk indicators
+
+Provide interpretable output
+
+In your project
+
+Injury risk classified as:
+
+Low (0–30)
+
+Medium (31–70)
+
+High (71–100)
+
+Validated using AUC
+
+ACWR-inspired workload estimation using video motion
+
+also created a raider rule engine where the raider is detected and court lien adn detected and if raider failed in any of the rules then he is marked as out and have alert to the user
+the alert is sedn to the mobile app and using that app notification is sedn to smart watch which user weraed 
+

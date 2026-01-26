@@ -1,0 +1,58 @@
+{
+  "1": {
+    "name": "Player Detection & Tracking",
+    "status": "Completed",
+    "details": "Detected 11 players",
+    "output_path": null,
+    "start_time": "2026-01-26T17:07:02.384757",
+    "end_time": "2026-01-26T17:07:05.827102"
+  },
+  "2": {
+    "name": "Raider Identification",
+    "status": "Completed",
+    "details": "Raider not detected",
+    "output_path": null,
+    "start_time": "2026-01-26T17:07:05.922634",
+    "end_time": "2026-01-26T17:07:05.937633"
+  },
+  "3": {
+    "name": "Pose Estimation",
+    "status": "Completed",
+    "details": "Pose Estimation skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-01-26T17:08:46.318947"
+  },
+  "4": {
+    "name": "Fall Detection",
+    "status": "Completed",
+    "details": "Fall Detection skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-01-26T17:08:46.320004"
+  },
+  "5": {
+    "name": "Motion Analysis",
+    "status": "Completed",
+    "details": "Motion Analysis skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-01-26T17:08:46.320993"
+  },
+  "6": {
+    "name": "Impact Detection",
+    "status": "Completed",
+    "details": "Impact Detection skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-01-26T17:08:46.322006"
+  },
+  "7": {
+    "name": "Risk Fusion",
+    "status": "Completed",
+    "details": "Risk Fusion skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-01-26T17:08:46.322998"
+  }
+}

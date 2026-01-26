@@ -1,0 +1,12 @@
+frame_num,injury_occurred,injury_severity,event_type,notes
+0,0,0,none,Normal play
+150,0,0,none,Normal play
+300,1,85,fall,Raider fell during tackle
+301,1,80,fall,Fall continuation
+302,1,75,fall,Fall continuation
+450,0,0,none,Normal play
+600,1,90,impact,Multiple defender collision
+601,1,85,impact,Impact continuation
+750,0,0,none,Normal play
+900,1,70,fall,Minor stumble
+1050,0,0,none,Normal play
