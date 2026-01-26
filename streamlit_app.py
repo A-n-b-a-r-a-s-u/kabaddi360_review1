@@ -10,6 +10,7 @@ import json
 import time
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
@@ -346,23 +347,20 @@ def main():
     initialize_session_state()
     
     # Header
-    st.markdown('<div class="main-header">🏏 Kabaddi Injury Prediction System</div>', 
+    st.markdown('<div class="main-header"> Kabaddi Injury Aware System</div>', 
                 unsafe_allow_html=True)
     st.markdown("**Done by Anbarasu with the guidance of Dr. T. Mala Mam (Professor)**")
-    st.markdown("---")
     
     # Processing parameters
     # Always enable intermediate steps
     max_frames = None
     save_intermediate = True
     
-    st.markdown("---")
-    
     # Main content tabs
-    tab1, tab2, tab3 = st.tabs(["📤 Upload & Process", "📊 Results Dashboard", "📁 Downloads"])
+    tab1, tab2 = st.tabs([" Upload & Process", " Results Dashboard"])
     
     with tab1:
-        st.markdown("### 📤 Upload Kabaddi Match Video")
+        st.markdown("###  Upload Kabaddi Match Video")
         
         uploaded_file = st.file_uploader(
             "Choose a video file",
@@ -384,8 +382,8 @@ def main():
             
             st.markdown("---")
             
-            # Process button
-            if st.button("🚀 Start Analysis", type="primary"):
+            # Auto-start analysis when video is uploaded
+            if not st.session_state.processing_complete:
                 with st.spinner("🔄 Processing video... This may take several minutes."):
                     
                     # Progress bar
@@ -433,7 +431,29 @@ def main():
                         
                         st.success("🎉 Video processing completed successfully!")
                         
+                        # Display video playback
+                        st.markdown("---")
+                        st.markdown("### 🎬 Processed Video")
+                        final_video = Path(st.session_state.output_dir) / "final_output.mp4"
+                        if final_video.exists():
+                            st.video(str(final_video))
+                            st.success("✅ Video processed and ready to view!")
+                            
+                            # Add download button
+                            with open(final_video, "rb") as f:
+                                st.download_button(
+                                    label="⬇️ Download Annotated Video",
+                                    data=f.read(),
+                                    file_name="kabaddi_analysis.mp4",
+                                    mime="video/mp4"
+                                )
+                        else:
+                            st.warning("⚠️ Output video not found. Check processing logs.")
+                        
+                        st.markdown("---")
+                        
                         # Display quick summary
+                        st.markdown("### 📊 Quick Summary")
                         if st.session_state.results:
                             logger.debug("[STREAMLIT APP] Displaying results summary...")
                             metrics = st.session_state.results.get('metrics', {})
@@ -453,18 +473,257 @@ def main():
                                 )
                             with col3:
                                 st.metric(
-                                    "Raider Detection",
-                                    f"{metrics.get('raider_detection_rate', 0)*100:.1f}%"
+                                    "Processing Time",
+                                    f"{metrics.get('avg_processing_time', 0):.2f}s/frame"
                                 )
                             with col4:
                                 st.metric(
-                                    "Processing Time",
-                                    f"{metrics.get('avg_processing_time', 0):.2f}s/frame"
+                                    "Impact Events",
+                                    metrics.get('total_impact_events', 0)
                                 )
                         else:
                             logger.warning("[STREAMLIT APP] No results found in session state")
                         
                         st.info("👉 Go to the **Results Dashboard** tab to view detailed analysis")
+
+                        # Intermediate Outputs (visual debug)
+                        st.markdown("---")
+                        st.markdown("### 🧭 Intermediate Outputs & Pipeline Analysis")
+
+                        # Load metrics and summary (if present)
+                        metrics = load_metrics(st.session_state.output_dir)
+                        summary = load_pipeline_summary(st.session_state.output_dir)
+
+                        # ============================================================
+                        # SECTION 1: Court Line Detection Pipeline
+                        # ============================================================
+                        st.markdown("#### 🎬 Court Line Detection Pipeline")
+                        try:
+                            video_path = Path(st.session_state.output_dir) / "final_output.mp4"
+                            if video_path.exists():
+                                cap = cv2.VideoCapture(str(video_path))
+                                total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+                                
+                                # Select a frame within first 20 frames
+                                if total > 0:
+                                    fidx = min(15, total - 1)  # Frame 15 or last frame if video is shorter
+                                    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
+                                    ret, frame = cap.read()
+                                    
+                                    if ret:
+                                        # Step 1: Convert to grayscale
+                                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                                        
+                                        # Step 2: Apply Gaussian Blur
+                                        blurred = cv2.GaussianBlur(gray, (5, 5), 1.5)
+                                        
+                                        # Step 3: Canny Edge Detection
+                                        edges = cv2.Canny(blurred, 50, 150)
+                                        
+                                        # Step 4: Hough Line Transform
+                                        lines_img = edges.copy()
+                                        lines = cv2.HoughLinesP(edges, 1, np.pi/180, 50, minLineLength=50, maxLineGap=10)
+                                        hough_lines_data = []
+                                        if lines is not None:
+                                            lines_img_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+                                            for line in lines:
+                                                x1, y1, x2, y2 = line[0]
+                                                cv2.line(lines_img_color, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                                                hough_lines_data.append({"x1": int(x1), "y1": int(y1), "x2": int(x2), "y2": int(y2)})
+                                            lines_img = cv2.cvtColor(lines_img_color, cv2.COLOR_BGR2RGB)
+                                        else:
+                                            lines_img = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
+                                        
+                                        # Save intermediate outputs to files
+                                        intermediate_dir = Path(st.session_state.output_dir) / "intermediate_outputs"
+                                        intermediate_dir.mkdir(exist_ok=True)
+                                        
+                                        # Save images
+                                        cv2.imwrite(str(intermediate_dir / "1_grayscale.png"), gray)
+                                        cv2.imwrite(str(intermediate_dir / "2_blurred.png"), blurred)
+                                        cv2.imwrite(str(intermediate_dir / "3_canny_edges.png"), edges)
+                                        cv2.imwrite(str(intermediate_dir / "4_hough_lines.png"), cv2.cvtColor(lines_img, cv2.COLOR_RGB2BGR))
+                                        
+                                        # Save Hough lines as JSON
+                                        hough_json = {
+                                            "frame_index": int(fidx),
+                                            "total_lines_detected": len(hough_lines_data),
+                                            "lines": hough_lines_data,
+                                            "hough_parameters": {
+                                                "minLineLength": 50,
+                                                "maxLineGap": 10,
+                                                "threshold": 50
+                                            }
+                                        }
+                                        with open(intermediate_dir / "hough_lines.json", 'w') as f:
+                                            json.dump(hough_json, f, indent=2)
+                                        
+                                        # Save edge detection matrix
+                                        edges_matrix = {
+                                            "shape": list(edges.shape),
+                                            "dtype": str(edges.dtype),
+                                            "canny_threshold_low": 50,
+                                            "canny_threshold_high": 150,
+                                            "edges_detected_count": int(np.count_nonzero(edges))
+                                        }
+                                        with open(intermediate_dir / "edge_detection_info.json", 'w') as f:
+                                            json.dump(edges_matrix, f, indent=2)
+                                        
+                                        # Save court line detection summary
+                                        summary_data = {
+                                            "pipeline_stage": "Court Line Detection",
+                                            "frame_processed": int(fidx),
+                                            "processing_steps": [
+                                                {"step": 1, "name": "Grayscale Conversion", "output": "1_grayscale.png"},
+                                                {"step": 2, "name": "Gaussian Blur (5x5, sigma=1.5)", "output": "2_blurred.png"},
+                                                {"step": 3, "name": "Canny Edge Detection (50-150)", "output": "3_canny_edges.png", "edges_count": int(np.count_nonzero(edges))},
+                                                {"step": 4, "name": "Hough Line Transform", "output": "4_hough_lines.png", "lines_detected": len(hough_lines_data)}
+                                            ]
+                                        }
+                                        with open(intermediate_dir / "court_line_summary.json", 'w') as f:
+                                            json.dump(summary_data, f, indent=2)
+                                        
+                                        # Display all 4 stages in 2x2 grid
+                                        cols = st.columns(2)
+                                        
+                                        # Step 1: Grayscale
+                                        with cols[0]:
+                                            _, png = cv2.imencode('.png', gray)
+                                            st.image(png.tobytes(), caption="1️⃣ Grayscale", use_column_width=True)
+                                        
+                                        # Step 2: Gaussian Blur
+                                        with cols[1]:
+                                            _, png = cv2.imencode('.png', blurred)
+                                            st.image(png.tobytes(), caption="2️⃣ Gaussian Blur", use_column_width=True)
+                                        
+                                        # Step 3: Canny Edge Detection
+                                        with cols[0]:
+                                            _, png = cv2.imencode('.png', edges)
+                                            st.image(png.tobytes(), caption=f"3️⃣ Canny Edge Detection ({np.count_nonzero(edges)} edges)", use_column_width=True)
+                                        
+                                        # Step 4: Hough Line Transform
+                                        with cols[1]:
+                                            _, png = cv2.imencode('.png', lines_img)
+                                            st.image(png.tobytes(), caption=f"4️⃣ Hough Lines ({len(hough_lines_data)} detected)", use_column_width=True)
+                                    
+                                    cap.release()
+                            else:
+                                st.info("Output video not available for frame extraction")
+                        except Exception as e:
+                            st.warning(f"Could not process court line detection: {e}")
+
+                        st.markdown("---")
+
+                        # ============================================================
+                        # SECTION 2: Raider Detected Frames (when raider is detected)
+                        # ============================================================
+                        st.markdown("#### 🎯 Raider Detection & Tracking")
+                        try:
+                            video_path = Path(st.session_state.output_dir) / "final_output.mp4"
+                            if metrics and "raider_detections" in metrics and video_path.exists():
+                                raiders = metrics.get('raider_detections', [])
+                                # Find ALL frames where raider is detected (not just first 30)
+                                raider_frames = [i for i, r in enumerate(raiders) if r == 1]
+                                
+                                if raider_frames:
+                                    # Show first 3-4 raider detected frames
+                                    cap = cv2.VideoCapture(str(video_path))
+                                    cols = st.columns(2)
+                                    
+                                    for idx, fidx in enumerate(raider_frames[:4]):  # First 4 raider frames
+                                        col = cols[idx % 2]
+                                        cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
+                                        ret, frame = cap.read()
+                                        if not ret:
+                                            continue
+                                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                        with col:
+                                            _, png = cv2.imencode('.png', rgb)
+                                            st.image(png.tobytes(), caption=f"🏏 Raider detected at frame {fidx}", use_column_width=True)
+                                    
+                                    cap.release()
+                                else:
+                                    st.info('❌ No raider detected throughout the video')
+                            else:
+                                st.info('⚠️ Raider detection data not available')
+                        except Exception as e:
+                            st.warning(f"Could not load raider frames: {e}")
+
+                        st.markdown("---")
+
+                        # Joint Skeleton Trajectory: show raider skeleton for fall frames in 2-column layout
+                        st.markdown("#### Raider Joint Skeleton Trajectory")
+                        try:
+                            fall_frames = []
+                            if summary and 'falls' in summary:
+                                fall_frames = summary['falls'].get('fall_frames', [])[:4]
+                            
+                            if fall_frames:
+                                video_path = Path(st.session_state.output_dir) / "final_output.mp4"
+                                if video_path.exists():
+                                    cap = cv2.VideoCapture(str(video_path))
+                                    skeleton_frames = fall_frames[:4]  # Max 4 frames
+                                    cols = st.columns(2)  # 2-column layout
+                                    
+                                    for idx, fidx in enumerate(skeleton_frames):
+                                        col = cols[idx % 2]
+                                        cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
+                                        ret, frame = cap.read()
+                                        if not ret:
+                                            continue
+                                        
+                                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                        with col:
+                                            _, png = cv2.imencode('.png', rgb)
+                                            st.image(png.tobytes(), caption=f"Skeleton at frame {fidx}", use_column_width=True)
+                                    
+                                    cap.release()
+                                else:
+                                    st.info("Could not load video for joint visualization")
+                            else:
+                                st.info('No fall frames detected - skeleton trajectory not available')
+                        except Exception as e:
+                            st.warning(f"Could not load joint skeleton frames: {e}")
+
+                        st.markdown("---")
+
+                        # Injury Score & Result Summary
+                        st.markdown("#### 🏥 Injury Assessment Score & Result")
+                        try:
+                            if summary:
+                                # Calculate injury score from risk metrics
+                                avg_risk = summary.get('risk', {}).get('avg_risk', 0)
+                                total_falls = summary.get('falls', {}).get('total_falls', 0)
+                                total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
+                                high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
+                                
+                                # Injury score calculation: weighted combination
+                                injury_score = (avg_risk * 0.4) + (total_falls * 10) + (total_impacts * 5) + (high_risk_frames * 0.1)
+                                
+                                # Determine injury result/severity
+                                if injury_score < 20:
+                                    injury_result = "🟢 LOW RISK - Minimal Injury Likelihood"
+                                    result_color = "green"
+                                elif injury_score < 50:
+                                    injury_result = "🟡 MODERATE RISK - Caution Advised"
+                                    result_color = "orange"
+                                elif injury_score < 80:
+                                    injury_result = "🟠 HIGH RISK - Injury Probable"
+                                    result_color = "orange"
+                                else:
+                                    injury_result = "🔴 CRITICAL RISK - Severe Injury Likely"
+                                    result_color = "red"
+                                
+                                # Display injury metrics
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.metric("💯 Injury Score", f"{injury_score:.1f}")
+                                with col2:
+                                    st.markdown(f"<div style='padding: 20px; border-radius: 10px; background-color: {result_color}20; border-left: 5px solid {result_color}'>{injury_result}</div>", unsafe_allow_html=True)
+                            else:
+                                st.info('⚠️ Injury assessment data not available')
+                        except Exception as e:
+                            st.warning(f"Could not load injury assessment: {e}")
                         
                     except Exception as e:
                         logger.error(f"[STREAMLIT APP - ERROR] {str(e)}", exc_info=True)
@@ -559,68 +818,6 @@ def main():
                 # Detailed Statistics
                 with st.expander("📊 Detailed Statistics", expanded=False):
                     st.json(summary)
-    
-    with tab3:
-        st.markdown("### 📁 Download Results")
-        
-        if not st.session_state.processing_complete:
-            st.info("👈 Please upload and process a video first")
-        else:
-            output_dir = st.session_state.output_dir
-            
-            st.markdown("#### 🎬 Output Video")
-            final_video = Path(output_dir) / "final_output.mp4"
-            if download_button(final_video, "⬇️ Download Annotated Video", "kabaddi_analysis.mp4"):
-                st.success("Video ready for download!")
-            
-            st.markdown("---")
-            st.markdown("#### 📄 Analysis Reports")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                summary_file = Path(output_dir) / "pipeline_summary.json"
-                download_button(summary_file, "📊 Download Summary (JSON)", "summary.json")
-                
-                metrics_file = Path(output_dir) / "metrics.json"
-                download_button(metrics_file, "📈 Download Metrics (JSON)", "metrics.json")
-            
-            with col2:
-                status_file = Path(output_dir) / "pipeline_status.json"
-                download_button(status_file, "✅ Download Status (JSON)", "status.json")
-                
-                log_file = Path(output_dir) / "pipeline.log"
-                download_button(log_file, "📝 Download Logs", "pipeline.log")
-            
-            st.markdown("---")
-            st.markdown("#### 🖼️ Pipeline Status Cards")
-            
-            status_cards_dir = Path(output_dir) / "status_cards"
-            if status_cards_dir.exists():
-                card_files = sorted(list(status_cards_dir.glob("*.png")))
-                if card_files:
-                    try:
-                        st.write("All pipeline stages and their current status:")
-                        
-                        cols = st.columns(3)
-                        for idx, card_file in enumerate(card_files):
-                            col_idx = idx % 3
-                            with cols[col_idx]:
-                                try:
-                                    from PIL import Image
-                                    img = Image.open(card_file)
-                                    st.image(img, use_column_width=True, caption=card_file.stem)
-                                except Exception as e:
-                                    st.warning(f"Could not display: {card_file.name}")
-                    except Exception as e:
-                        st.error(f"Error displaying status cards: {str(e)}")
-                else:
-                    st.info("Status cards will appear after processing completes.")
-            else:
-                st.info("Status cards folder not found yet.")
-            
-            st.markdown("---")
-            st.info(f"💡 All outputs: `{output_dir}`")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+{
+  "shape": [
+    1080,
+    1920
+  ],
+  "dtype": "uint8",
+  "canny_threshold_low": 50,
+  "canny_threshold_high": 150,
+  "edges_detected_count": 133197
+}

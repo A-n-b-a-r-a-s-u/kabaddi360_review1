@@ -166,7 +166,7 @@ class VideoAnnotator:
         x, y = position
         
         # Alert box
-        alert_text = f"⚠️ {event_type.upper()} DETECTED"
+        alert_text = f"{event_type.lower()} detected ?"
         text_size, _ = cv2.getTextSize(alert_text, self.font, 0.8, 2)
         
         box_width = text_size[0] + 40

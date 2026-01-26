@@ -17,6 +17,7 @@ import json
 from config.config import (
     STAGE_DIRS, OUTPUT_DIR, VIDEO_CONFIG, LOG_CONFIG, PERFORMANCE_CONFIG
 )
+
 from utils.video_utils import VideoReader, VideoWriter
 from utils.pipeline_status import PipelineStatus, MetricsLogger
 from utils.visualization import VideoAnnotator

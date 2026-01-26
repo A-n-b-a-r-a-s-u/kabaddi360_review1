@@ -1,0 +1,28 @@
+{
+  "pipeline_stage": "Court Line Detection",
+  "frame_processed": 15,
+  "processing_steps": [
+    {
+      "step": 1,
+      "name": "Grayscale Conversion",
+      "output": "1_grayscale.png"
+    },
+    {
+      "step": 2,
+      "name": "Gaussian Blur (5x5, sigma=1.5)",
+      "output": "2_blurred.png"
+    },
+    {
+      "step": 3,
+      "name": "Canny Edge Detection (50-150)",
+      "output": "3_canny_edges.png",
+      "edges_count": 133197
+    },
+    {
+      "step": 4,
+      "name": "Hough Line Transform",
+      "output": "4_hough_lines.png",
+      "lines_detected": 576
+    }
+  ]
+}
