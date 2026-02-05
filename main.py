@@ -29,6 +29,7 @@ from models.fall_detector import FallDetector, annotate_fall_detection
 from models.motion_analyzer import MotionAnalyzer, annotate_motion_analysis
 from models.impact_detector import ImpactDetector, annotate_impact_detection
 from models.risk_fusion import RiskFusionEngine, annotate_risk_score
+from utils.value_logger import ValueLogger
 
 
 # Configure logging with timestamped files
@@ -111,6 +112,9 @@ class KabaddiInjuryPipeline:
         # Initialize status tracker
         self.status = PipelineStatus(self.output_dir)
         self.metrics = MetricsLogger(self.output_dir)
+        
+        # Initialize value logger (simple, non-intrusive)
+        self.logger = ValueLogger(self.output_dir, max_frames=1000)
         
         # Initialize all stage modules
         logger.info("Initializing pipeline modules...")
@@ -201,6 +205,9 @@ class KabaddiInjuryPipeline:
             # Complete pipeline
             self._finalize_pipeline()
             
+            # Export logged values (non-intrusive, after all processing)
+            self.logger.export()
+            
         except Exception as e:
             logger.error(f"Pipeline failed: {e}", exc_info=True)
             raise
@@ -219,7 +226,15 @@ class KabaddiInjuryPipeline:
         logger.info("="*60)
         logger.info("PIPELINE COMPLETED SUCCESSFULLY")
         logger.info(f"Final output: {final_output_path}")
+        logger.info("Intermediate step values computed successfully")
         logger.info("="*60)
+        
+        # Print success message to CLI
+        print("\n" + "="*60)
+        print("✓ PIPELINE COMPLETED SUCCESSFULLY")
+        print(f"✓ Final output: {final_output_path}")
+        print("✓ Intermediate step values computed successfully")
+        print("="*60 + "\n")
         
         # Print status report
         self.status.print_report()
@@ -449,6 +464,22 @@ class KabaddiInjuryPipeline:
             )
             
             logger.debug(f"[MAIN PIPELINE] ============ FRAME {frame_num} END (Time: {processing_time:.3f}s) ============")
+            
+            # Log calculation values after all processing is complete (non-intrusive)
+            try:
+                self.logger.log_frame(frame_num, {
+                    "players": players,
+                    "raider_info": raider_info,
+                    "joints": joints,
+                    "is_falling": is_falling,
+                    "fall_info": fall_info,
+                    "motion_abnormality": motion_abnormality,
+                    "impact_detected": impact_detected,
+                    "impact_info": impact_info,
+                    "risk_data": risk_data
+                })
+            except Exception as e:
+                logger.debug(f"[VALUE LOGGER] Could not log frame values: {e}")
             
             return final_frame
         

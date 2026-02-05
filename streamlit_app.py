@@ -459,11 +459,23 @@ def main():
                             metrics = st.session_state.results.get('metrics', {})
                             logger.debug(f"[STREAMLIT APP] Metrics: {metrics}")
                             
+                            # Load summary to calculate injury score
+                            summary = load_pipeline_summary(st.session_state.output_dir)
+                            
+                            # Calculate injury score
+                            injury_score = 0
+                            if summary:
+                                avg_risk = summary.get('risk', {}).get('avg_risk', 0)
+                                total_falls = summary.get('falls', {}).get('total_falls', 0)
+                                total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
+                                high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
+                                injury_score = (avg_risk * 0.4) + (total_falls * 10) + (total_impacts * 5) + (high_risk_frames * 0.1)
+                            
                             col1, col2, col3, col4 = st.columns(4)
                             with col1:
                                 st.metric(
-                                    "Avg Risk Score",
-                                    f"{metrics.get('avg_risk_score', 0):.1f}",
+                                    "💯 Injury Score",
+                                    f"{injury_score:.1f}",
                                     delta=None
                                 )
                             with col2:
