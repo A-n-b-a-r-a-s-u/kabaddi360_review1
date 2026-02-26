@@ -121,10 +121,17 @@ class ImpactDetector:
         self, 
         players: List[Dict], 
         raider_id: Optional[int],
-        frame_num: int
+        frame_num: int,
+        collision_impact_score: float = 0.0
     ) -> Tuple[bool, Dict]:
         """
         Detect defender impacts on raider.
+        
+        Args:
+            players: List of all players
+            raider_id: Track ID of raider
+            frame_num: Current frame number
+            collision_impact_score: Impact score from collision detection (0.0-1.0)
         
         Returns: (impact_detected, impact_info)
         """
@@ -141,6 +148,10 @@ class ImpactDetector:
         
         raider_pos = np.array(raider["center"])
         logger.debug(f"[STAGE 6 - IMPACT DETECTOR] Raider position: {raider_pos}")
+        
+        # Use collision impact score if available
+        if collision_impact_score > 0.0:
+            logger.debug(f"[STAGE 6 - IMPACT DETECTOR] Using collision impact score: {collision_impact_score:.2f}")
         
         # Update defender positions
         self.update_defender_positions(players, raider_id)
@@ -193,6 +204,17 @@ class ImpactDetector:
             colliding_defenders,
             raider_pos
         )
+        
+        # Incorporate collision impact score
+        if collision_impact_score > 0.0:
+            # Blend collision score with calculated severity
+            # Collision score is 0-1.0, convert to 0-100 scale
+            collision_severity = collision_impact_score * 100
+            # Weighted average: 60% motion-based, 40% collision-based
+            impact_severity = (0.6 * impact_severity) + (0.4 * collision_severity)
+            impact_detected = True
+            logger.debug(f"[STAGE 6 - IMPACT DETECTOR] Blended impact with collision score: {impact_severity:.1f}")
+        
         logger.debug(f"[STAGE 6 - IMPACT DETECTOR] Impact detected: {impact_detected}, severity: {impact_severity:.3f}")
         
         # Record impact event
@@ -203,7 +225,8 @@ class ImpactDetector:
                 "num_colliding": len(colliding_defenders),
                 "num_approaching": len(approaching_defenders),
                 "colliding_defenders": colliding_defenders,
-                "approaching_defenders": approaching_defenders
+                "approaching_defenders": approaching_defenders,
+                "collision_score": collision_impact_score
             }
             self.impact_events.append(impact_event)
             logger.debug(f"Impact detected at frame {frame_num} (severity: {impact_severity:.1f})")
@@ -214,7 +237,8 @@ class ImpactDetector:
             "num_colliding": len(colliding_defenders),
             "num_approaching": len(approaching_defenders),
             "approaching_defenders": approaching_defenders,
-            "colliding_defenders": colliding_defenders
+            "colliding_defenders": colliding_defenders,
+            "collision_score": collision_impact_score
         }
         
         return impact_detected, impact_info

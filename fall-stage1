@@ -1,0 +1,185 @@
+fall_detector.py - Stage 4 Explanation
+
+Module Purpose
+- This module performs rule-based fall detection from human pose keypoints and optional center-of-mass (COM) tracking.
+- It also supports visualization (annotating video frames with alert text and rule status).
+
+Technology Used
+- NumPy (`numpy`): vector math, Euclidean distance, mean, angle math.
+- Deque (`collections.deque`): fixed-size temporal history buffers for recent frames.
+- Loguru (`loguru.logger`): logging/debug/warning output.
+- OpenCV (`cv2`): drawing text overlays on frames.
+- Rule-based biomechanical logic: no ML model here; decisions are made by thresholds from `config/config.py` (`FALL_CONFIG`).
+
+Core Inputs
+1) `FallDetector(frame_height: int)`
+- `frame_height`: video frame height in pixels, used to normalize hip vertical position.
+
+2) `detect_fall(joints, frame_num, com=None) -> (bool, dict)`
+- `joints` (dict or None): expected pose keypoints with entries like:
+  - `nose: { position: [x, y] }`
+  - `left_hip: { position: [x, y] }`
+  - `right_hip: { position: [x, y] }`
+- `frame_num` (int): current frame index.
+- `com` (tuple `(x, y)` or None): center-of-mass position for sudden-stop logic.
+
+3) `annotate_fall_detection(frame, fall_info, frame_num, alert_duration=30) -> frame`
+- `frame`: image array (`np.ndarray`).
+- `fall_info`: dictionary returned by `detect_fall`.
+- `frame_num`: frame index (not actively used for logic inside this function).
+- `alert_duration`: alert persistence duration.
+
+Core Outputs
+1) `detect_fall` returns:
+- `is_falling` (bool)
+- `fall_info` (dict):
+  - `is_falling`: bool
+  - `severity`: percentage in [0, 100]
+  - `indicators`: 5 booleans
+    - `hip_drop`
+    - `torso_tilt`
+    - `head_velocity`
+    - `ground_contact`
+    - `sudden_stop`
+  - `conditions_met`: count of active indicators
+
+2) Internal event log (`self.fall_events`)
+- stores first frame of each fall episode with severity, indicators, hip position, torso angle.
+
+3) `get_fall_summary()`
+- returns total falls, average/max severity, frames of falls, and full event objects.
+
+Thresholds Used (`FALL_CONFIG`)
+- `hip_drop_speed_threshold = 5.0` pixels/frame
+- `hip_drop_distance = 50` pixels
+- `torso_angle_change_threshold = 60` degrees
+- `head_downward_velocity = 4.0` pixels/frame
+- `ground_contact_height = 0.8` (normalized y)
+- `ground_contact_duration = 10` frames
+- `sudden_stop_deceleration = 3.0` pixels/frame^2 (approx via velocity drop)
+- `fall_confirmation_conditions = 2`
+
+Step-by-Step Algorithm (`detect_fall`)
+1) Validate input
+- If `joints` is `None`, return `(False, {})`.
+
+2) Initialize per-frame indicator flags
+- Start all 5 indicators as `False`.
+- Start `fall_severity = 0.0`.
+
+3) Extract biomechanical features
+- `hip_y`: average of available left/right hip y-coordinates.
+- `head_y`: nose y-coordinate.
+- `torso_angle`: angle between torso vector (hip-center -> nose) and vertical-up vector.
+
+4) Update temporal histories
+- append latest hip/head/torso values into fixed windows:
+  - hips up to 30 frames
+  - head up to 30
+  - torso angle up to 30
+
+5) Rule 1 - Sudden hip drop
+- Using last 5 hip samples:
+  - `hip_drop_speed = (hip_last - hip_first) / 5`
+  - `hip_drop_distance = hip_last - min(last_5_hips)`
+- If speed > 5.0 => `hip_drop=True`, add +0.3 severity.
+- If distance > 50 => add +0.2 severity.
+
+Example:
+- last 5 hips = [300, 306, 314, 326, 340]
+- speed = (340 - 300)/5 = 8.0 > 5.0 => triggered
+- distance = 340 - 300 = 40 (not > 50) => not triggered
+
+6) Rule 2 - Sudden torso orientation change
+- Using last 5 torso angles:
+  - `angle_change = abs(angle_last - angle_first)`
+- If > 60 degrees => `torso_tilt=True`, +0.25 severity.
+
+Example:
+- angles = [10, 20, 35, 55, 78]
+- change = 68 degrees => triggered
+
+7) Rule 3 - Head downward velocity
+- Using last 3 head y-values:
+  - `head_velocity = (head_last - head_first) / 3`
+- If > 4.0 => `head_velocity=True`, +0.2 severity.
+
+Example:
+- heads = [120, 130, 138]
+- velocity = (138 - 120)/3 = 6.0 => triggered
+
+8) Rule 4 - Ground contact persistence
+- Normalize hip height:
+  - `normalized_height = hip_y / frame_height`
+- If normalized height > 0.8, increment `ground_contact_counter`.
+- If counter >= 10 frames => `ground_contact=True`, +0.15 severity.
+- If hip is not low enough in a frame, reset counter to 0.
+
+Example:
+- frame_height=720, hip_y=620 => normalized=0.861
+- if this continues for >=10 consecutive frames, rule triggers.
+
+9) Rule 5 - Sudden stop after motion
+- If COM is provided, store recent COM points (up to 10).
+- Using last 5 COM points, compute frame-to-frame speed:
+  - `dx = x_i - x_{i-1}`
+  - `dy = y_i - y_{i-1}`
+  - `v_i = sqrt(dx^2 + dy^2)`
+- Deceleration proxy:
+  - `deceleration = velocities[0] - velocities[-1]`
+- If deceleration > 3.0 => `sudden_stop=True`, +0.1 severity.
+
+Example:
+- speeds = [9.0, 7.2, 5.5, 4.0]
+- deceleration = 9.0 - 4.0 = 5.0 => triggered
+
+10) Fall decision fusion
+- `conditions_met = number of True indicators`
+- `is_falling = conditions_met >= 2`
+
+11) Severity normalization
+- `fall_severity = min(raw_score * 100, 100)`
+- raw_score is sum of rule weights.
+
+12) Event logging with state transition
+- A fall event is stored only when:
+  - current frame says falling, and
+  - previous frame state was not falling.
+- This avoids repeated duplicate events every frame.
+
+13) Return output structure
+- return `(is_falling, fall_info)`.
+
+Math Formulas Used
+1) Mean hip height
+- `hip_y = mean([left_hip_y, right_hip_y])`
+
+2) Torso angle from vertical
+- `torso_vector = nose - hip_center`
+- `cos(theta) = dot(torso_vector, vertical) / (||torso_vector|| * ||vertical|| + 1e-6)`
+- `theta = degrees(arccos(clip(cos(theta), -1, 1)))`
+
+3) Euclidean speed from COM
+- `v = sqrt(dx^2 + dy^2)`
+
+4) Normalized vertical position
+- `normalized_height = hip_y / frame_height`
+
+5) Weighted severity score
+- `raw = sum(triggered_weight_i)`
+- `severity_percent = min(raw * 100, 100)`
+
+Important Implementation Notes
+- Coordinate convention: larger y means lower position in image (standard image coordinates).
+- Severity can increase from some checks even when their boolean flag is not set (for example hip drop distance contributes +0.2 independently).
+- The sudden-stop metric uses drop between first and last speeds in a short window (simple heuristic, not full physical acceleration estimation).
+- Missing joints reduce available indicators because rules are skipped when required points are absent.
+
+Annotation Function Behavior
+- If `fall_info.is_falling` is true:
+  - draws a "FALL" alert and severity text in red.
+- Always prints each indicator status (`YES`/`NO`) in green/gray text.
+
+Reset and Summary
+- `reset()` clears all state/history/event logs.
+- `get_fall_summary()` returns aggregate stats and list of events.

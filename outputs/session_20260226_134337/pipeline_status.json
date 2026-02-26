@@ -1,0 +1,66 @@
+{
+  "0": {
+    "name": "Court Line Detection",
+    "status": "Completed",
+    "details": "Detected 0 court lines",
+    "output_path": null,
+    "start_time": "2026-02-26T13:43:37.645343",
+    "end_time": "2026-02-26T13:43:37.695960"
+  },
+  "1": {
+    "name": "Player Detection & Tracking",
+    "status": "Completed",
+    "details": "Detected 11 players",
+    "output_path": null,
+    "start_time": "2026-02-26T13:43:37.744039",
+    "end_time": "2026-02-26T13:43:39.609916"
+  },
+  "2": {
+    "name": "Raider Identification",
+    "status": "Completed",
+    "details": "Waiting for raider crossing...",
+    "output_path": null,
+    "start_time": "2026-02-26T13:43:39.642620",
+    "end_time": "2026-02-26T13:43:39.645835"
+  },
+  "3": {
+    "name": "Pose Estimation",
+    "status": "Completed",
+    "details": "Pose Estimation skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-02-26T13:45:09.449141"
+  },
+  "4": {
+    "name": "Fall Detection",
+    "status": "Completed",
+    "details": "Fall Detection skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-02-26T13:45:09.450148"
+  },
+  "5": {
+    "name": "Motion Analysis",
+    "status": "Completed",
+    "details": "Motion Analysis skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-02-26T13:45:09.451147"
+  },
+  "6": {
+    "name": "Impact Detection",
+    "status": "Completed",
+    "details": "Impact Detection skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-02-26T13:45:09.452156"
+  },
+  "7": {
+    "name": "Risk Fusion",
+    "status": "Completed",
+    "details": "Risk Fusion skipped - no raider detected",
+    "output_path": null,
+    "start_time": null,
+    "end_time": "2026-02-26T13:45:09.453149"
+  }
+}

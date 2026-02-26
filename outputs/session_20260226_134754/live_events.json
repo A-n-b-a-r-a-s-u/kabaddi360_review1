@@ -1,0 +1,144 @@
+{
+  "last_update": "2026-02-26T13:49:23.337083",
+  "total_events": 80,
+  "current_frame": 408,
+  "events": [
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.666666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 230,
+        "touch_count": 70
+      },
+      "logged_at": "2026-02-26T13:48:52.126833"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.866666666666666,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 236,
+        "fall_count": 1
+      },
+      "logged_at": "2026-02-26T13:48:53.335540"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.9,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 237,
+        "fall_count": 2
+      },
+      "logged_at": "2026-02-26T13:48:53.556974"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.933333333333334,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 60.0,
+        "frame": 238,
+        "fall_count": 3
+      },
+      "logged_at": "2026-02-26T13:48:53.782130"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.666666666666666,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 260,
+        "touch_count": 71
+      },
+      "logged_at": "2026-02-26T13:48:57.721283"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.7,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 261,
+        "touch_count": 72
+      },
+      "logged_at": "2026-02-26T13:48:58.024303"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.733333333333333,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 262,
+        "touch_count": 73
+      },
+      "logged_at": "2026-02-26T13:48:58.321206"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 8.733333333333333,
+      "time_str": "00:08",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 262,
+        "fall_count": 4
+      },
+      "logged_at": "2026-02-26T13:48:58.366423"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.766666666666667,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 263,
+        "touch_count": 74
+      },
+      "logged_at": "2026-02-26T13:48:58.662711"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 8.766666666666667,
+      "time_str": "00:08",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 263,
+        "fall_count": 5
+      },
+      "logged_at": "2026-02-26T13:48:58.718356"
+    }
+  ],
+  "raider_status": {
+    "id": 6,
+    "confidence": 100.0,
+    "state": "Fallen",
+    "detected_at": 1.5,
+    "touch_count": 74
+  }
+}

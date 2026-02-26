@@ -20,6 +20,14 @@ class PipelineStatus:
         self.output_dir.mkdir(exist_ok=True, parents=True)
         
         self.stages = {
+            0: {
+                "name": "Court Line Detection",
+                "status": "Yet to start",
+                "details": "",
+                "output_path": None,
+                "start_time": None,
+                "end_time": None,
+            },
             1: {
                 "name": "Player Detection & Tracking",
                 "status": "Yet to start",

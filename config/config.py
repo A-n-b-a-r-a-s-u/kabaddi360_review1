@@ -20,6 +20,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Stage-specific output directories
 STAGE_DIRS = {
+    0: OUTPUT_DIR / "stage0_court_lines",
     1: OUTPUT_DIR / "stage1_detection",
     2: OUTPUT_DIR / "stage2_raider",
     3: OUTPUT_DIR / "stage3_pose",
@@ -34,6 +35,46 @@ for stage_dir in STAGE_DIRS.values():
 
 # Injury history CSV path
 INJURY_HISTORY_PATH = DATA_DIR / "injury_history.csv"
+
+# ============================================================================
+# STAGE 0: COURT LINE DETECTION
+# ============================================================================
+COURT_LINE_CONFIG = {
+    # HSV thresholding for white lines
+    "hsv_lower": (0, 0, 200),      # Lower HSV bound for white
+    "hsv_upper": (180, 40, 255),   # Upper HSV bound for white
+    
+    # Morphological operations
+    "morph_kernel_size": (5, 5),   # Kernel size for closing + dilation
+    "morph_iterations": 2,          # Number of iterations for morphological ops
+    
+    # Canny Edge Detection
+    "canny_low": 50,                # Lower threshold
+    "canny_high": 150,              # Upper threshold
+    
+    # Hough Line Transform
+    "hough_rho": 1,                 # Distance resolution in pixels
+    "hough_theta": 1,               # Angle resolution in degrees
+    "hough_threshold": 50,          # Minimum votes to detect a line
+    "min_line_length": 100,         # Minimum line length in pixels
+    "max_line_gap": 10,            # Maximum gap between line segments
+    
+    # Line filtering
+    "angle_tolerance": 15,          # degrees - tolerance for horizontal/vertical classification
+    "min_separation": 50,           # Minimum pixels between categorized lines
+    
+    # Visualization colors (BGR format)
+    "line_colors": {
+        "line_1": (255, 0, 0),      # Blue
+        "line_2": (0, 255, 0),      # Green
+        "line_3": (0, 0, 255),      # Red
+        "line_4": (0, 255, 255),    # Yellow
+    },
+    
+    "line_thickness": 2,
+    "label_font_scale": 0.6,
+    "label_font_thickness": 2,
+}
 
 # ============================================================================
 # STAGE 1: PLAYER DETECTION & TRACKING

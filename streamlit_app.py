@@ -8,6 +8,7 @@ import sys
 import os
 import json
 import time
+import threading
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -17,6 +18,7 @@ from datetime import datetime
 import cv2
 import base64
 from loguru import logger
+from PIL import Image
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -88,6 +90,18 @@ def initialize_session_state():
         st.session_state.output_dir = None
     if 'results' not in st.session_state:
         st.session_state.results = None
+    if 'processing_thread' not in st.session_state:
+        st.session_state.processing_thread = None
+    if 'is_processing' not in st.session_state:
+        st.session_state.is_processing = False
+    if 'live_events' not in st.session_state:
+        st.session_state.live_events = None
+    if 'raider_status' not in st.session_state:
+        st.session_state.raider_status = None
+    if 'session_events_archive' not in st.session_state:
+        st.session_state.session_events_archive = []  # Store archived events for Results tab
+    if 'uploaded_video_name' not in st.session_state:
+        st.session_state.uploaded_video_name = None
 
 
 def get_video_info(video_file):
@@ -99,36 +113,244 @@ def get_video_info(video_file):
     }
 
 
-def process_video(uploaded_file, max_frames=None, save_intermediate=True):
-    """Process uploaded video through pipeline."""
+def load_live_events(output_dir):
+    """Load live events from JSON file. Returns None if file doesn't exist."""
+    try:
+        live_events_file = Path(output_dir) / "live_events.json"
+        if live_events_file.exists():
+            with open(live_events_file, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.debug(f"[STREAMLIT] Could not load live events: {e}")
+    return None
+
+
+def display_event_log(events_data, max_messages=4):
+    """Display event log with latest events. Max 4 recent messages."""
+    if not events_data or 'events' not in events_data:
+        st.info("⏳ Waiting for raider detection...")
+        return
     
-    logger.info(f"[STREAMLIT APP] Processing video: {uploaded_file.name}")
+    events = events_data.get('events', [])
+    if not events:
+        st.info("⏳ Waiting for raider detection...")
+        return
     
-    # Create temporary directory for this session
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir = OUTPUT_DIR / f"session_{timestamp}"
-    session_dir.mkdir(parents=True, exist_ok=True)
-    logger.debug(f"[STREAMLIT APP] Session directory: {session_dir}")
+    # Show only latest max_messages events
+    latest_events = events[-max_messages:]
     
-    # Save uploaded file
-    input_path = session_dir / uploaded_file.name
-    with open(input_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    logger.debug(f"[STREAMLIT APP] Video saved to: {input_path}")
+    for event in latest_events:
+        message = event.get('message', 'Unknown Event')
+        time_str = event.get('time_str', '00:00')
+        
+        # Color-code by event type
+        event_type = event.get('type', '')
+        if 'FALL' in event_type:
+            st.warning(f"**{time_str}** - {message}")
+        elif 'TOUCH' in event_type:
+            st.info(f"**{time_str}** - {message}")
+        elif 'DETECTED' in event_type:
+            st.success(f"**{time_str}** - {message}")
+        else:
+            st.write(f"**{time_str}** - {message}")
+
+
+def display_raider_status_card(events_data):
+    """Display raider status card with current information."""
+    if not events_data:
+        st.markdown("""
+        <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center;">
+            <h3 style="color: #1976D2;">⏳ Waiting for Raider Detection</h3>
+            <p>Processing video... Raider will be detected once they cross the court line.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
     
-    # Initialize pipeline
-    logger.debug(f"[STREAMLIT APP] Initializing pipeline...")
-    pipeline = KabaddiInjuryPipeline(str(input_path), str(session_dir))
+    raider_status = events_data.get('raider_status', {})
     
-    # Process video
-    logger.info(f"[STREAMLIT APP] Starting video processing...")
-    results = pipeline.run(
-        max_frames=max_frames,
-        save_intermediate=save_intermediate
-    )
-    logger.info(f"[STREAMLIT APP] Video processing completed")
+    if raider_status.get('id') is None:
+        st.markdown("""
+        <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center;">
+            <h3 style="color: #1976D2;">⏳ Waiting for Raider Detection</h3>
+            <p>Processing video... Raider will be detected once they cross the court line.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Raider has been detected - show full status
+        raider_id = raider_status.get('id')
+        confidence = raider_status.get('confidence', 0.0)
+        state = raider_status.get('state', 'Unknown')
+        touch_count = raider_status.get('touch_count', 0)
+        detected_at = raider_status.get('detected_at')
+        
+        # Format the detection time
+        if detected_at:
+            minutes = int(detected_at) // 60
+            seconds = int(detected_at) % 60
+            time_str = f"{minutes:02d}:{seconds:02d}"
+        else:
+            time_str = "N/A"
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("🎯 Raider ID", f"#{raider_id}")
+            st.metric("⏱️ Detected At", time_str)
+        
+        with col2:
+            st.metric("📊 Confidence", f"{confidence:.1f}%")
+            st.metric("💥 Touches by Defenders", touch_count)
+        
+        # State indicator
+        state_color = "#FFC107"  # Yellow for moving
+        state_emoji = "🚴"
+        
+        if "Fall" in str(state):
+            state_color = "#F44336"  # Red for fallen
+            state_emoji = "⬇️"
+        elif "Touch" in str(state):
+            state_color = "#FF9100"  # Orange for touched
+            state_emoji = "💪"
+        
+        st.markdown(f"""
+        <div style="background-color: {state_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold;">
+            {state_emoji} {state}
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def process_video_background(uploaded_file, output_dir, max_frames=None, save_intermediate=True):
+    """
+    Process video in background thread (NO STREAMLIT CALLS!).
+    Only saves results to files - doesn't touch st.session_state.
+    """
+    try:
+        logger.info(f"[BACKGROUND THREAD] Starting video processing: {uploaded_file.name}")
+        
+        # Save uploaded file
+        input_path = output_dir / uploaded_file.name
+        with open(input_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        logger.info(f"[BACKGROUND THREAD] Video saved to: {input_path}")
+        
+        # Initialize and run pipeline
+        pipeline = KabaddiInjuryPipeline(str(input_path), str(output_dir))
+        results = pipeline.run(
+            max_frames=max_frames,
+            save_intermediate=save_intermediate
+        )
+        
+        # Save results to JSON file for main thread to read
+        results_file = output_dir / "processing_results.json"
+        with open(results_file, 'w') as f:
+            # Convert Path objects to strings for JSON serialization
+            json_results = {
+                "status": "completed",
+                "results": {k: v for k, v in results.items() if k != "output_video"},
+                "output_video": str(results.get("output_video", "")),
+                "completed_at": datetime.now().isoformat()
+            }
+            json.dump(json_results, f, indent=2)
+        
+        # Create a marker file to signal completion
+        completion_marker = output_dir / ".processing_complete"
+        completion_marker.write_text("done")
+        
+        logger.info("[BACKGROUND THREAD] Video processing completed successfully")
+        
+    except Exception as e:
+        logger.error(f"[BACKGROUND THREAD] Error during processing: {e}", exc_info=True)
+        
+        # Save error to file for main thread to read
+        error_file = output_dir / "processing_error.json"
+        with open(error_file, 'w') as f:
+            json.dump({
+                "status": "failed",
+                "error": str(e),
+                "failed_at": datetime.now().isoformat()
+            }, f, indent=2)
+        
+        # Create error marker
+        error_marker = output_dir / ".processing_error"
+        error_marker.write_text(str(e))
+
+
+def display_live_processing_panel():
+    """Display live processing panel with event updates and raider status."""
     
-    return results, session_dir
+    with st.container():
+        # Create columns for layout - SWAPPED: Status on left, Events on right
+        col_status, col_events = st.columns([1, 2])
+        
+        with col_status:
+            st.markdown("### 🎯 Raider Status")
+            status_placeholder = st.empty()
+        
+        with col_events:
+            st.markdown("### 📝 Live Event Log")
+            event_placeholder = st.empty()
+        
+        # Polling loop - wait for completion marker file
+        output_dir = st.session_state.output_dir
+        completion_marker = output_dir / ".processing_complete"
+        error_marker = output_dir / ".processing_error"
+        
+        max_wait_time = 3600  # 1 hour max wait
+        start_time = datetime.now()
+        
+        while True:
+            # Check for completion marker
+            if completion_marker.exists():
+                st.session_state.is_processing = False
+                st.session_state.processing_complete = True
+                break
+            
+            # Check for error marker
+            if error_marker.exists():
+                st.session_state.is_processing = False
+                st.session_state.processing_complete = False
+                with event_placeholder.container():
+                    st.error("❌ Processing failed!")
+                break
+            
+            # Check timeout
+            elapsed = (datetime.now() - start_time).total_seconds()
+            if elapsed > max_wait_time:
+                st.session_state.is_processing = False
+                with event_placeholder.container():
+                    st.error("❌ Processing timeout (>1 hour)")
+                break
+            
+            # Load live events from file
+            live_events = load_live_events(output_dir)
+            
+            with event_placeholder.container():
+                display_event_log(live_events, max_messages=4)
+            
+            with status_placeholder.container():
+                display_raider_status_card(live_events)
+            
+            # Refresh every 500ms
+            time.sleep(0.5)
+        
+        # Final update after processing
+        live_events = load_live_events(output_dir)
+        with event_placeholder.container():
+            # Store events for Results tab
+            if live_events or completion_marker.exists():
+                final_events_file = output_dir / "events_timeline.json"
+                if final_events_file.exists():
+                    with open(final_events_file, 'r') as f:
+                        final_data = json.load(f)
+                        st.session_state.session_events_archive = final_data.get('timeline', [])
+            
+            if completion_marker.exists():
+                st.success("✅ Processing Complete!")
+            else:
+                st.warning("⚠️ Processing ended unexpectedly")
+        
+        with status_placeholder.container():
+            display_raider_status_card(live_events)
 
 
 def load_pipeline_status(output_dir):
@@ -382,366 +604,154 @@ def main():
             
             st.markdown("---")
             
-            # Auto-start analysis when video is uploaded
-            if not st.session_state.processing_complete:
-                with st.spinner("🔄 Processing video... This may take several minutes."):
+            # Check if already processing another video
+            if st.session_state.is_processing:
+                st.error("⚠️ **ANOTHER VIDEO IS BEING PROCESSED**. Please wait for it to complete before uploading a new video.")
+                st.info("Current processing will continue in the background. Check back soon!")
+                
+                # Show live updates while processing
+                display_live_processing_panel()
+            
+            elif not st.session_state.processing_complete:
+                # Start new processing
+                st.info("🎬 Starting video analysis... This may take several minutes.")
+                st.write("Video will be processed in the background. Live updates will appear below:")
+                
+                # Initialize output directory
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_dir = OUTPUT_DIR / f"session_{timestamp}"
+                output_dir.mkdir(parents=True, exist_ok=True)
+                st.session_state.output_dir = output_dir
+                st.session_state.uploaded_video_name = uploaded_file.name
+                
+                # Start background processing thread
+                st.session_state.is_processing = True
+                st.session_state.processing_complete = False
+                
+                thread = threading.Thread(
+                    target=process_video_background,
+                    args=(uploaded_file, output_dir, None, True),
+                    daemon=True
+                )
+                st.session_state.processing_thread = thread
+                thread.start()
+                
+                logger.info(f"[STREAMLIT APP] Started background processing thread for {uploaded_file.name}")
+                
+                # Display live processing panel with polling
+                display_live_processing_panel()
+                
+                # After processing completes, show results
+                if st.session_state.processing_complete:
+                    st.markdown("---")
+                    st.success("🎉 **Processing Completed Successfully!**")
                     
-                    # Progress bar
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                    # Display video playback
+                    st.markdown("### 🎬 Processed Video")
+                    final_video = Path(st.session_state.output_dir) / "final_output.mp4"
+                    if final_video.exists():
+                        st.video(str(final_video))
+                        
+                        # Add download button
+                        with open(final_video, "rb") as f:
+                            st.download_button(
+                                label="⬇️ Download Annotated Video",
+                                data=f.read(),
+                                file_name="kabaddi_analysis.mp4",
+                                mime="video/mp4"
+                            )
                     
-                    try:
-                        # Simulate progress stages
-                        stages = [
-                            "Initializing pipeline...",
-                            "Detecting players...",
-                            "Identifying raider...",
-                            "Analyzing pose...",
-                            "Detecting falls...",
-                            "Analyzing motion...",
-                            "Detecting impacts...",
-                            "Calculating risk scores...",
-                            "Generating outputs..."
-                        ]
+                    st.markdown("---")
+                    
+                    # Display Intermediate Outputs with Dropdowns
+                    st.markdown("### 📸 Processing Results")
+                    
+                    session_dir = st.session_state.output_dir
+                    
+                    # Court Line Detection
+                    court_line_dir = session_dir / "stage0_court_lines"
+                    if court_line_dir.exists():
+                        court_images = sorted(court_line_dir.glob("*.jpg"))
+                        if court_images:
+                            with st.expander("🏐 Court Line Detection"):
+                                for img_path in court_images[:3]:
+                                    st.image(Image.open(img_path), caption=img_path.name, use_column_width=True)
+                    
+                    # Player Detection
+                    player_dir = session_dir / "stage1_detection"
+                    if player_dir.exists():
+                        player_images = sorted(player_dir.glob("*.jpg"))
+                        if player_images:
+                            with st.expander("👥 Player Detection"):
+                                cols = st.columns(2)
+                                for idx, img_path in enumerate(player_images[:10]):
+                                    with cols[idx % 2]:
+                                        st.image(Image.open(img_path), caption=img_path.name, use_column_width=True)
+                    
+                    # Raider Detection
+                    raider_dir = session_dir / "stage2_raider"
+                    if raider_dir.exists():
+                        raider_images = sorted(raider_dir.glob("*.jpg"))
+                        if raider_images:
+                            with st.expander("🎯 Raider Detection"):
+                                cols = st.columns(2)
+                                for idx, img_path in enumerate(raider_images[:10]):
+                                    with cols[idx % 2]:
+                                        st.image(Image.open(img_path), caption=img_path.name, use_column_width=True)
+                    
+                    # Impact Detection
+                    impact_dir = session_dir / "stage6_impact"
+                    if impact_dir.exists():
+                        impact_images = sorted(impact_dir.glob("*.jpg"))
+                        if impact_images:
+                            with st.expander("💥 Impact Detection"):
+                                cols = st.columns(2)
+                                for idx, img_path in enumerate(impact_images[:10]):
+                                    with cols[idx % 2]:
+                                        st.image(Image.open(img_path), caption=img_path.name, use_column_width=True)
+                    
+                    # Fall Detection
+                    fall_dir = session_dir / "stage4_falls"
+                    if fall_dir.exists():
+                        fall_images = sorted(fall_dir.glob("*.jpg"))
+                        if fall_images:
+                            with st.expander("🤸 Fall Detection"):
+                                cols = st.columns(2)
+                                for idx, img_path in enumerate(fall_images[:10]):
+                                    with cols[idx % 2]:
+                                        st.image(Image.open(img_path), caption=img_path.name, use_column_width=True)
+                    
+                    st.markdown("---")
+                    
+                    # Display Key Metrics and Scores
+                    st.markdown("### 📈 Key Performance Metrics")
+                    
+                    output_dir = st.session_state.output_dir
+                    summary = load_pipeline_summary(output_dir)
+                    
+                    if summary:
+                        col1, col2, col3, col4 = st.columns(4)
                         
-                        logger.info("[STREAMLIT APP] Starting video processing...")
+                        with col1:
+                            avg_risk = summary.get('risk', {}).get('avg_risk', 0)
+                            risk_color = "🟢" if avg_risk < 30 else "🟠" if avg_risk < 70 else "🔴"
+                            st.metric(
+                                f"{risk_color} Average Risk",
+                                f"{avg_risk:.1f}%"
+                            )
                         
-                        for i, stage in enumerate(stages):
-                            status_text.text(stage)
-                            progress_bar.progress((i + 1) / len(stages))
-                            
-                            if i == 2:  # Actually start processing after initialization
-                                logger.debug("[STREAMLIT APP] Calling process_video function...")
-                                results, output_dir = process_video(
-                                    uploaded_file,
-                                    max_frames=max_frames if max_frames else None,
-                                    save_intermediate=save_intermediate
-                                )
-                                logger.debug(f"[STREAMLIT APP] process_video returned with output_dir: {output_dir}")
-                                st.session_state.results = results
-                                st.session_state.output_dir = output_dir
-                                logger.debug("[STREAMLIT APP] Results stored in session state")
-                            
-                            time.sleep(0.3)
+                        with col2:
+                            total_falls = summary.get('falls', {}).get('total_falls', 0)
+                            st.metric("🤸 Total Falls", total_falls)
                         
-                        st.session_state.processing_complete = True
-                        progress_bar.progress(1.0)
-                        status_text.text("✅ Processing complete!")
-                        logger.info("[STREAMLIT APP] Processing marked as complete")
+                        with col3:
+                            total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
+                            st.metric("💥 Total Impacts", total_impacts)
                         
-                        st.success("🎉 Video processing completed successfully!")
-                        
-                        # Display video playback
-                        st.markdown("---")
-                        st.markdown("### 🎬 Processed Video")
-                        final_video = Path(st.session_state.output_dir) / "final_output.mp4"
-                        if final_video.exists():
-                            st.video(str(final_video))
-                            st.success("✅ Video processed and ready to view!")
-                            
-                            # Add download button
-                            with open(final_video, "rb") as f:
-                                st.download_button(
-                                    label="⬇️ Download Annotated Video",
-                                    data=f.read(),
-                                    file_name="kabaddi_analysis.mp4",
-                                    mime="video/mp4"
-                                )
-                        else:
-                            st.warning("⚠️ Output video not found. Check processing logs.")
-                        
-                        st.markdown("---")
-                        
-                        # Display quick summary
-                        st.markdown("### 📊 Quick Summary")
-                        if st.session_state.results:
-                            logger.debug("[STREAMLIT APP] Displaying results summary...")
-                            metrics = st.session_state.results.get('metrics', {})
-                            logger.debug(f"[STREAMLIT APP] Metrics: {metrics}")
-                            
-                            # Load summary to calculate injury score
-                            summary = load_pipeline_summary(st.session_state.output_dir)
-                            
-                            # Calculate injury score
-                            injury_score = 0
-                            if summary:
-                                avg_risk = summary.get('risk', {}).get('avg_risk', 0)
-                                total_falls = summary.get('falls', {}).get('total_falls', 0)
-                                total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
-                                high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
-                                injury_score = (avg_risk * 0.4) + (total_falls * 10) + (total_impacts * 5) + (high_risk_frames * 0.1)
-                            
-                            col1, col2, col3, col4 = st.columns(4)
-                            with col1:
-                                st.metric(
-                                    "💯 Injury Score",
-                                    f"{injury_score:.1f}",
-                                    delta=None
-                                )
-                            with col2:
-                                st.metric(
-                                    "Fall Events",
-                                    metrics.get('total_fall_events', 0)
-                                )
-                            with col3:
-                                st.metric(
-                                    "Processing Time",
-                                    f"{metrics.get('avg_processing_time', 0):.2f}s/frame"
-                                )
-                            with col4:
-                                st.metric(
-                                    "Impact Events",
-                                    metrics.get('total_impact_events', 0)
-                                )
-                        else:
-                            logger.warning("[STREAMLIT APP] No results found in session state")
-                        
-                        st.info("👉 Go to the **Results Dashboard** tab to view detailed analysis")
-
-                        # Intermediate Outputs (visual debug)
-                        st.markdown("---")
-                        st.markdown("### 🧭 Intermediate Outputs & Pipeline Analysis")
-
-                        # Load metrics and summary (if present)
-                        metrics = load_metrics(st.session_state.output_dir)
-                        summary = load_pipeline_summary(st.session_state.output_dir)
-
-                        # ============================================================
-                        # SECTION 1: Court Line Detection Pipeline
-                        # ============================================================
-                        st.markdown("#### 🎬 Court Line Detection Pipeline")
-                        try:
-                            video_path = Path(st.session_state.output_dir) / "final_output.mp4"
-                            if video_path.exists():
-                                cap = cv2.VideoCapture(str(video_path))
-                                total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-                                
-                                # Select a frame within first 20 frames
-                                if total > 0:
-                                    fidx = min(15, total - 1)  # Frame 15 or last frame if video is shorter
-                                    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
-                                    ret, frame = cap.read()
-                                    
-                                    if ret:
-                                        # Step 1: Convert to grayscale
-                                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                                        
-                                        # Step 2: Apply Gaussian Blur
-                                        blurred = cv2.GaussianBlur(gray, (5, 5), 1.5)
-                                        
-                                        # Step 3: Canny Edge Detection
-                                        edges = cv2.Canny(blurred, 50, 150)
-                                        
-                                        # Step 4: Hough Line Transform
-                                        lines_img = edges.copy()
-                                        lines = cv2.HoughLinesP(edges, 1, np.pi/180, 50, minLineLength=50, maxLineGap=10)
-                                        hough_lines_data = []
-                                        if lines is not None:
-                                            lines_img_color = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-                                            for line in lines:
-                                                x1, y1, x2, y2 = line[0]
-                                                cv2.line(lines_img_color, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                                                hough_lines_data.append({"x1": int(x1), "y1": int(y1), "x2": int(x2), "y2": int(y2)})
-                                            lines_img = cv2.cvtColor(lines_img_color, cv2.COLOR_BGR2RGB)
-                                        else:
-                                            lines_img = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
-                                        
-                                        # Save intermediate outputs to files
-                                        intermediate_dir = Path(st.session_state.output_dir) / "intermediate_outputs"
-                                        intermediate_dir.mkdir(exist_ok=True)
-                                        
-                                        # Save images
-                                        cv2.imwrite(str(intermediate_dir / "1_grayscale.png"), gray)
-                                        cv2.imwrite(str(intermediate_dir / "2_blurred.png"), blurred)
-                                        cv2.imwrite(str(intermediate_dir / "3_canny_edges.png"), edges)
-                                        cv2.imwrite(str(intermediate_dir / "4_hough_lines.png"), cv2.cvtColor(lines_img, cv2.COLOR_RGB2BGR))
-                                        
-                                        # Save Hough lines as JSON
-                                        hough_json = {
-                                            "frame_index": int(fidx),
-                                            "total_lines_detected": len(hough_lines_data),
-                                            "lines": hough_lines_data,
-                                            "hough_parameters": {
-                                                "minLineLength": 50,
-                                                "maxLineGap": 10,
-                                                "threshold": 50
-                                            }
-                                        }
-                                        with open(intermediate_dir / "hough_lines.json", 'w') as f:
-                                            json.dump(hough_json, f, indent=2)
-                                        
-                                        # Save edge detection matrix
-                                        edges_matrix = {
-                                            "shape": list(edges.shape),
-                                            "dtype": str(edges.dtype),
-                                            "canny_threshold_low": 50,
-                                            "canny_threshold_high": 150,
-                                            "edges_detected_count": int(np.count_nonzero(edges))
-                                        }
-                                        with open(intermediate_dir / "edge_detection_info.json", 'w') as f:
-                                            json.dump(edges_matrix, f, indent=2)
-                                        
-                                        # Save court line detection summary
-                                        summary_data = {
-                                            "pipeline_stage": "Court Line Detection",
-                                            "frame_processed": int(fidx),
-                                            "processing_steps": [
-                                                {"step": 1, "name": "Grayscale Conversion", "output": "1_grayscale.png"},
-                                                {"step": 2, "name": "Gaussian Blur (5x5, sigma=1.5)", "output": "2_blurred.png"},
-                                                {"step": 3, "name": "Canny Edge Detection (50-150)", "output": "3_canny_edges.png", "edges_count": int(np.count_nonzero(edges))},
-                                                {"step": 4, "name": "Hough Line Transform", "output": "4_hough_lines.png", "lines_detected": len(hough_lines_data)}
-                                            ]
-                                        }
-                                        with open(intermediate_dir / "court_line_summary.json", 'w') as f:
-                                            json.dump(summary_data, f, indent=2)
-                                        
-                                        # Display all 4 stages in 2x2 grid
-                                        cols = st.columns(2)
-                                        
-                                        # Step 1: Grayscale
-                                        with cols[0]:
-                                            _, png = cv2.imencode('.png', gray)
-                                            st.image(png.tobytes(), caption="1️⃣ Grayscale", use_column_width=True)
-                                        
-                                        # Step 2: Gaussian Blur
-                                        with cols[1]:
-                                            _, png = cv2.imencode('.png', blurred)
-                                            st.image(png.tobytes(), caption="2️⃣ Gaussian Blur", use_column_width=True)
-                                        
-                                        # Step 3: Canny Edge Detection
-                                        with cols[0]:
-                                            _, png = cv2.imencode('.png', edges)
-                                            st.image(png.tobytes(), caption=f"3️⃣ Canny Edge Detection ({np.count_nonzero(edges)} edges)", use_column_width=True)
-                                        
-                                        # Step 4: Hough Line Transform
-                                        with cols[1]:
-                                            _, png = cv2.imencode('.png', lines_img)
-                                            st.image(png.tobytes(), caption=f"4️⃣ Hough Lines ({len(hough_lines_data)} detected)", use_column_width=True)
-                                    
-                                    cap.release()
-                            else:
-                                st.info("Output video not available for frame extraction")
-                        except Exception as e:
-                            st.warning(f"Could not process court line detection: {e}")
-
-                        st.markdown("---")
-
-                        # ============================================================
-                        # SECTION 2: Raider Detected Frames (when raider is detected)
-                        # ============================================================
-                        st.markdown("#### 🎯 Raider Detection & Tracking")
-                        try:
-                            video_path = Path(st.session_state.output_dir) / "final_output.mp4"
-                            if metrics and "raider_detections" in metrics and video_path.exists():
-                                raiders = metrics.get('raider_detections', [])
-                                # Find ALL frames where raider is detected (not just first 30)
-                                raider_frames = [i for i, r in enumerate(raiders) if r == 1]
-                                
-                                if raider_frames:
-                                    # Show first 3-4 raider detected frames
-                                    cap = cv2.VideoCapture(str(video_path))
-                                    cols = st.columns(2)
-                                    
-                                    for idx, fidx in enumerate(raider_frames[:4]):  # First 4 raider frames
-                                        col = cols[idx % 2]
-                                        cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
-                                        ret, frame = cap.read()
-                                        if not ret:
-                                            continue
-                                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                        with col:
-                                            _, png = cv2.imencode('.png', rgb)
-                                            st.image(png.tobytes(), caption=f"🏏 Raider detected at frame {fidx}", use_column_width=True)
-                                    
-                                    cap.release()
-                                else:
-                                    st.info('❌ No raider detected throughout the video')
-                            else:
-                                st.info('⚠️ Raider detection data not available')
-                        except Exception as e:
-                            st.warning(f"Could not load raider frames: {e}")
-
-                        st.markdown("---")
-
-                        # Joint Skeleton Trajectory: show raider skeleton for fall frames in 2-column layout
-                        st.markdown("#### Raider Joint Skeleton Trajectory")
-                        try:
-                            fall_frames = []
-                            if summary and 'falls' in summary:
-                                fall_frames = summary['falls'].get('fall_frames', [])[:4]
-                            
-                            if fall_frames:
-                                video_path = Path(st.session_state.output_dir) / "final_output.mp4"
-                                if video_path.exists():
-                                    cap = cv2.VideoCapture(str(video_path))
-                                    skeleton_frames = fall_frames[:4]  # Max 4 frames
-                                    cols = st.columns(2)  # 2-column layout
-                                    
-                                    for idx, fidx in enumerate(skeleton_frames):
-                                        col = cols[idx % 2]
-                                        cap.set(cv2.CAP_PROP_POS_FRAMES, int(fidx))
-                                        ret, frame = cap.read()
-                                        if not ret:
-                                            continue
-                                        
-                                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                        with col:
-                                            _, png = cv2.imencode('.png', rgb)
-                                            st.image(png.tobytes(), caption=f"Skeleton at frame {fidx}", use_column_width=True)
-                                    
-                                    cap.release()
-                                else:
-                                    st.info("Could not load video for joint visualization")
-                            else:
-                                st.info('No fall frames detected - skeleton trajectory not available')
-                        except Exception as e:
-                            st.warning(f"Could not load joint skeleton frames: {e}")
-
-                        st.markdown("---")
-
-                        # Injury Score & Result Summary
-                        st.markdown("#### 🏥 Injury Assessment Score & Result")
-                        try:
-                            if summary:
-                                # Calculate injury score from risk metrics
-                                avg_risk = summary.get('risk', {}).get('avg_risk', 0)
-                                total_falls = summary.get('falls', {}).get('total_falls', 0)
-                                total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
-                                high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
-                                
-                                # Injury score calculation: weighted combination
-                                injury_score = (avg_risk * 0.4) + (total_falls * 10) + (total_impacts * 5) + (high_risk_frames * 0.1)
-                                
-                                # Determine injury result/severity
-                                if injury_score < 20:
-                                    injury_result = "🟢 LOW RISK - Minimal Injury Likelihood"
-                                    result_color = "green"
-                                elif injury_score < 50:
-                                    injury_result = "🟡 MODERATE RISK - Caution Advised"
-                                    result_color = "orange"
-                                elif injury_score < 80:
-                                    injury_result = "🟠 HIGH RISK - Injury Probable"
-                                    result_color = "orange"
-                                else:
-                                    injury_result = "🔴 CRITICAL RISK - Severe Injury Likely"
-                                    result_color = "red"
-                                
-                                # Display injury metrics
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    st.metric("💯 Injury Score", f"{injury_score:.1f}")
-                                with col2:
-                                    st.markdown(f"<div style='padding: 20px; border-radius: 10px; background-color: {result_color}20; border-left: 5px solid {result_color}'>{injury_result}</div>", unsafe_allow_html=True)
-                            else:
-                                st.info('⚠️ Injury assessment data not available')
-                        except Exception as e:
-                            st.warning(f"Could not load injury assessment: {e}")
-                        
-                    except Exception as e:
-                        logger.error(f"[STREAMLIT APP - ERROR] {str(e)}", exc_info=True)
-                        st.error(f"❌ Error during processing: {str(e)}")
-                        st.exception(e)
-    
+                        with col4:
+                            high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
+                            st.metric("⚠️ High Risk Frames", high_risk_frames)
+                    
     with tab2:
         st.markdown("### 📊 Analysis Results")
         logger.debug(f"[STREAMLIT APP] Results tab loaded. Processing complete: {st.session_state.processing_complete}")
@@ -750,86 +760,92 @@ def main():
             st.info("👈 Please upload and process a video first")
             logger.debug("[STREAMLIT APP] Waiting for video processing")
         else:
-            logger.debug("[STREAMLIT APP] Processing complete, loading results...")
-            output_dir = st.session_state.output_dir
-            logger.debug(f"[STREAMLIT APP] Loading data from: {output_dir}")
-            
-            # Load data
-            status = load_pipeline_status(output_dir)
-            summary = load_pipeline_summary(output_dir)
-            metrics = load_metrics(output_dir)
-            
-            logger.debug(f"[STREAMLIT APP] Status loaded: {status is not None}")
-            logger.debug(f"[STREAMLIT APP] Summary loaded: {summary is not None}")
-            logger.debug(f"[STREAMLIT APP] Metrics loaded: {metrics is not None}")
-            
-            # Display stage status
-            display_stage_status(status)
-            
-            st.markdown("---")
-            
-            # Key Metrics
-            if summary:
-                logger.debug("[STREAMLIT APP] Displaying key metrics from summary")
-                st.markdown("### 📈 Key Performance Metrics")
+            # Safety check - ensure output_dir is valid
+            if not st.session_state.output_dir or st.session_state.output_dir is None:
+                st.error("Output directory not found. Please upload and process a video first.")
+                logger.debug("[STREAMLIT APP] Processing complete, loading results...")
+            else:
+                output_dir = st.session_state.output_dir
+                logger.debug(f"[STREAMLIT APP] Loading data from: {output_dir}")
                 
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    avg_risk = summary.get('risk', {}).get('avg_risk', 0)
-                    risk_color = "🟢" if avg_risk < 30 else "🟠" if avg_risk < 70 else "🔴"
-                    st.metric(
-                        f"{risk_color} Average Risk",
-                        f"{avg_risk:.1f}%"
-                    )
-                
-                with col2:
-                    total_falls = summary.get('falls', {}).get('total_falls', 0)
-                    st.metric("🤸 Total Falls", total_falls)
-                
-                with col3:
-                    total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
-                    st.metric("💥 Total Impacts", total_impacts)
-                
-                with col4:
-                    high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
-                    st.metric("⚠️ High Risk Frames", high_risk_frames)
-                
-                st.markdown("---")
-                
-                # Risk Timeline Chart
-                st.markdown("### 📉 Risk Score Timeline")
-                risk_chart = create_risk_timeline_chart(summary)
-                if risk_chart:
-                    st.plotly_chart(risk_chart, use_column_width=True)
-                    logger.debug("[STREAMLIT APP] Risk timeline chart displayed")
-                else:
-                    st.warning("No timeline data available")
-                    logger.warning("[STREAMLIT APP] Risk timeline chart not available")
-                
-                # Two column layout for additional charts
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("### 🥧 Risk Component Breakdown")
-                    component_chart = create_component_breakdown_chart(summary)
-                    if component_chart:
-                        st.plotly_chart(component_chart, use_column_width=True)
-                        logger.debug("[STREAMLIT APP] Component breakdown chart displayed")
-                
-                with col2:
-                    st.markdown("### ⚡ Event Timeline")
-                    event_chart = create_event_timeline(summary)
-                    if event_chart:
-                        st.plotly_chart(event_chart, use_column_width=True)
-                    else:
-                        st.info("No events detected")
-                
-                st.markdown("---")
-                
-                # Detailed Statistics
-                with st.expander("📊 Detailed Statistics", expanded=False):
-                    st.json(summary)
+                # Load data with error handling
+                try:
+                    status = load_pipeline_status(output_dir)
+                    summary = load_pipeline_summary(output_dir)
+                    metrics = load_metrics(output_dir)
+                    
+                    logger.debug(f"[STREAMLIT APP] Status loaded: {status is not None}")
+                    logger.debug(f"[STREAMLIT APP] Summary loaded: {summary is not None}")
+                    logger.debug(f"[STREAMLIT APP] Metrics loaded: {metrics is not None}")
+                    
+                    # Display stage status
+                    display_stage_status(status)
+                    
+                    # Key Metrics
+                    if summary:
+                        logger.debug("[STREAMLIT APP] Displaying key metrics from summary")
+                        st.markdown("### 📈 Key Performance Metrics")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            avg_risk = summary.get('risk', {}).get('avg_risk', 0)
+                            risk_color = "🟢" if avg_risk < 30 else "🟠" if avg_risk < 70 else "🔴"
+                            st.metric(
+                                f"{risk_color} Average Risk",
+                                f"{avg_risk:.1f}%"
+                            )
+                        
+                        with col2:
+                            total_falls = summary.get('falls', {}).get('total_falls', 0)
+                            st.metric("🤸 Total Falls", total_falls)
+                        
+                        with col3:
+                            total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
+                            st.metric("💥 Total Impacts", total_impacts)
+                        
+                        with col4:
+                            high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
+                            st.metric("⚠️ High Risk Frames", high_risk_frames)
+                        
+                        st.markdown("---")
+                        
+                        # Risk Timeline Chart
+                        st.markdown("### 📉 Risk Score Timeline")
+                        risk_chart = create_risk_timeline_chart(summary)
+                        if risk_chart:
+                            st.plotly_chart(risk_chart, use_column_width=True)
+                            logger.debug("[STREAMLIT APP] Risk timeline chart displayed")
+                        else:
+                            st.warning("No timeline data available")
+                            logger.warning("[STREAMLIT APP] Risk timeline chart not available")
+                        
+                        # Two column layout for additional charts
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("### 🥧 Risk Component Breakdown")
+                            component_chart = create_component_breakdown_chart(summary)
+                            if component_chart:
+                                st.plotly_chart(component_chart, use_column_width=True)
+                                logger.debug("[STREAMLIT APP] Component breakdown chart displayed")
+                        
+                        with col2:
+                            st.markdown("### ⚡ Event Timeline")
+                            event_chart = create_event_timeline(summary)
+                            if event_chart:
+                                st.plotly_chart(event_chart, use_column_width=True)
+                            else:
+                                st.info("No events detected")
+                        
+                        st.markdown("---")
+                        
+                        # Detailed Statistics
+                        with st.expander("📊 Detailed Statistics", expanded=False):
+                            st.json(summary)
+                except Exception as e:
+                    logger.error(f"[STREAMLIT APP] Error loading results: {str(e)}")
+                    st.error(f"❌ Error loading results: {str(e)}")
 
 
 if __name__ == "__main__":

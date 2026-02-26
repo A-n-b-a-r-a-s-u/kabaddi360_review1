@@ -6,7 +6,7 @@ Orchestrates all 7 stages and produces final annotated output.
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 from loguru import logger
 from tqdm import tqdm
 import sys
@@ -22,14 +22,17 @@ from utils.video_utils import VideoReader, VideoWriter
 from utils.pipeline_status import PipelineStatus, MetricsLogger
 from utils.visualization import VideoAnnotator
 
+from models.court_line_detector import CourtLineDetector
 from models.player_detector import PlayerDetector
-from models.raider_identifier import RaiderIdentifier, annotate_raider
+from models.raider_identifier import RaiderIdentifier, annotate_raider_crossing
 from models.pose_estimator import PoseEstimator, annotate_pose
 from models.fall_detector import FallDetector, annotate_fall_detection
 from models.motion_analyzer import MotionAnalyzer, annotate_motion_analysis
 from models.impact_detector import ImpactDetector, annotate_impact_detection
 from models.risk_fusion import RiskFusionEngine, annotate_risk_score
 from utils.value_logger import ValueLogger
+from utils.event_logger import EventLogger
+from utils.raider_status_tracker import RaiderStatusTracker
 
 
 # Configure logging with timestamped files
@@ -116,8 +119,14 @@ class KabaddiInjuryPipeline:
         # Initialize value logger (simple, non-intrusive)
         self.logger = ValueLogger(self.output_dir, max_frames=1000)
         
+        # Initialize event logger for real-time dashboard updates
+        self.event_logger = EventLogger(self.output_dir)
+        self.raider_status = RaiderStatusTracker()
+        self.last_flush_frame = 0  # Track frame count for periodic flush
+        
         # Initialize all stage modules
         logger.info("Initializing pipeline modules...")
+        self.court_line_detector = None
         self.player_detector = None
         self.raider_identifier = None
         self.pose_estimator = None
@@ -131,6 +140,11 @@ class KabaddiInjuryPipeline:
         self.frame_height = 0
         self.fps = 0
         
+        # Collision tracking for display (show collision text for 20 frames)
+        self.last_collision_frame = -100  # Frame of last collision
+        self.collision_text = ""  # Text to display
+        self.collision_history = []  # List of all collisions
+        
         logger.info(f"Pipeline initialized for video: {video_path}")
     
     def _initialize_modules(self, frame_width: int, frame_height: int):
@@ -138,6 +152,7 @@ class KabaddiInjuryPipeline:
         self.frame_width = frame_width
         self.frame_height = frame_height
         
+        self.court_line_detector = CourtLineDetector()
         self.player_detector = PlayerDetector()
         self.raider_identifier = RaiderIdentifier(frame_width, frame_height)
         self.pose_estimator = PoseEstimator()
@@ -181,6 +196,7 @@ class KabaddiInjuryPipeline:
         
         # Process frames
         total_frames = min(reader.total_frames, max_frames) if max_frames else reader.total_frames
+        self.frame_count = total_frames  # Store for access in _process_frame
         
         try:
             with tqdm(total=total_frames, desc="Processing Pipeline") as pbar:
@@ -204,6 +220,9 @@ class KabaddiInjuryPipeline:
             
             # Complete pipeline
             self._finalize_pipeline()
+            
+            # Finalize event logger - move to results
+            self.event_logger.finalize_events()
             
             # Export logged values (non-intrusive, after all processing)
             self.logger.export()
@@ -229,11 +248,24 @@ class KabaddiInjuryPipeline:
         logger.info("Intermediate step values computed successfully")
         logger.info("="*60)
         
+        # Save collision data to JSON
+        collision_data_path = self.output_dir / "collision_data.json"
+        collision_data = {
+            "total_collisions": len(self.collision_history),
+            "collisions": self.collision_history
+        }
+        with open(collision_data_path, 'w') as f:
+            json.dump(collision_data, f, indent=2)
+        logger.info(f"Collision data saved: {collision_data_path}")
+        logger.info(f"Total collision events recorded: {len(self.collision_history)}")
+        
         # Print success message to CLI
         print("\n" + "="*60)
         print("✓ PIPELINE COMPLETED SUCCESSFULLY")
         print(f"✓ Final output: {final_output_path}")
         print("✓ Intermediate step values computed successfully")
+        if self.collision_history:
+            print(f"✓ Collision events recorded: {len(self.collision_history)}")
         print("="*60 + "\n")
         
         # Print status report
@@ -242,51 +274,296 @@ class KabaddiInjuryPipeline:
         return {
             "output_video": str(final_output_path),
             "status": self.status.get_all_statuses(),
-            "metrics": self.metrics.get_summary_stats()
+            "metrics": self.metrics.get_summary_stats(),
+            "collision_data": collision_data
         }
     
+    def classify_players_by_team(self, players: List[Dict], raider_id: Optional[int], detection_line_x: int) -> Dict[str, List[Dict]]:
+        """
+        Classify players into raider, attackers (left side), and defenders (right side).
+        
+        Args:
+            players: List of detected players
+            raider_id: Track ID of raider (if detected)
+            detection_line_x: x-coordinate of 25% detection line
+            
+        Returns:
+            Dict with keys: 'raider', 'attackers', 'defenders'
+        """
+        raider = None
+        attackers = []
+        defenders = []
+        
+        for player in players:
+            track_id = player["track_id"]
+            player_x = player["center"][0]
+            
+            if track_id == raider_id:
+                raider = player
+            elif player_x < detection_line_x:
+                # Left side = raider's team (attackers)
+                attackers.append(player)
+            else:
+                # Right side = defending team
+                defenders.append(player)
+        
+        return {
+            "raider": raider,
+            "attackers": attackers,
+            "defenders": defenders
+        }
+    
+    def detect_collisions(self, raider: Optional[Dict], defenders: List[Dict], collision_distance: int = 100) -> tuple:
+        """
+        Detect collisions between raider and defenders.
+        
+        Args:
+            raider: Raider player data
+            defenders: List of defender player data
+            collision_distance: Distance threshold for collision (pixels)
+            
+        Returns:
+            (colliding_defenders_ids, impact_score)
+        """
+        if raider is None or not defenders:
+            return [], 0.0
+        
+        raider_x, raider_y = raider["center"]
+        colliding_defenders = []
+        impact_score = 0.0
+        
+        for defender in defenders:
+            def_x, def_y = defender["center"]
+            
+            # Euclidean distance
+            distance = np.sqrt((raider_x - def_x)**2 + (raider_y - def_y)**2)
+            
+            if distance < collision_distance:
+                colliding_defenders.append(defender["track_id"])
+                impact_score = min(impact_score + 0.3, 1.0)  # Cap at 1.0
+                logger.debug(f"[COLLISION] Raider {raider['track_id']} hit by Defender {defender['track_id']} at distance {distance:.1f}px")
+        
+        return colliding_defenders, impact_score
+    
+    def draw_all_players(self, frame: np.ndarray, players: List[Dict], raider_id: Optional[int], 
+                        detection_line_x: int, colliding_defenders: List[int]) -> np.ndarray:
+        """
+        Draw all players with appropriate colors and labels:
+        - Raider: RED box, label "ID"
+        - Attackers (left side): GREEN box, label "ID"
+        - Defenders (right side): BLUE box, label "DEFENDER ID"
+        
+        Args:
+            frame: Frame to draw on
+            players: List of players
+            raider_id: Track ID of raider
+            detection_line_x: x-coordinate of 25% line
+            colliding_defenders: List of defender track IDs colliding with raider
+            
+        Returns:
+            Annotated frame
+        """
+        for player in players:
+            track_id = player["track_id"]
+            bbox = player["bbox"]
+            x1, y1, x2, y2 = bbox
+            
+            if track_id == raider_id:
+                # RAIDER - RED
+                color = (0, 0, 255)  # RED in BGR
+                label = f"RAIDER {track_id}"
+                thickness = 3
+            elif player["center"][0] < detection_line_x:
+                # ATTACKER (left side) - GREEN
+                color = (0, 255, 0)  # GREEN
+                label = f"{track_id}"
+                thickness = 2
+            else:
+                # DEFENDER (right side) - BLUE
+                color = (255, 0, 0)  # BLUE
+                label = f"DEFENDER {track_id}"
+                thickness = 2
+                
+                # Highlight if colliding with raider
+                if track_id in colliding_defenders:
+                    color = (0, 165, 255)  # ORANGE (collision highlight)
+                    thickness = 3
+            
+            # Draw bounding box
+            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness)
+            
+            # Draw label
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.6
+            text_color = (255, 255, 255)  # White text
+            text_thickness = 1
+            
+            text_size = cv2.getTextSize(label, font, font_scale, text_thickness)[0]
+            text_x = int(x1)
+            text_y = max(int(y1) - 5, 20)
+            
+            # Text background
+            cv2.rectangle(frame, (text_x, text_y - text_size[1] - 5), 
+                         (text_x + text_size[0] + 5, text_y + 5), color, -1)
+            cv2.putText(frame, label, (text_x + 2, text_y - 2), font, font_scale, text_color, text_thickness)
+        
+        return frame
+    
+    def save_collision_data(self, frame_num: int, raider_id: int, colliding_defenders: List[int]):
+        """Save collision data to history."""
+        if colliding_defenders:
+            collision_record = {
+                "frame": frame_num,
+                "raider_id": raider_id,
+                "defender_ids": colliding_defenders,
+                "defender_count": len(colliding_defenders)
+            }
+            self.collision_history.append(collision_record)
+            logger.info(f"[COLLISION] Frame {frame_num}: Raider {raider_id} hit by Defenders {colliding_defenders}")
+    
     def _process_frame(self, frame: np.ndarray, frame_num: int, save_intermediate: bool) -> np.ndarray:
-        """Process single frame through all 7 stages."""
+        """Process single frame through all 8 stages (Stage 0-7)."""
         import time
         start_time = time.time()
         
+        # Update frame count for event logger
+        self.event_logger.update_frame(frame_num)
+        
+        # Calculate timestamp
+        timestamp = frame_num / self.fps if self.fps > 0 else 0.0
+        
         try:
+            # Stage 0: Court Line Detection
+            if frame_num == 0:
+                self.status.start_stage(0)
+            
+            logger.debug(f"[MAIN PIPELINE] ============ FRAME {frame_num} START ============")
+            logger.debug(f"[MAIN PIPELINE - STAGE 0] Starting court line detection...")
+            
+            # For court line intermediate saves, use output_dir if available
+            court_line_save_dir = self.output_dir / "stage0_court_lines" if self.output_dir else STAGE_DIRS[0]
+            if save_intermediate and frame_num == 0:
+                court_line_save_dir.mkdir(parents=True, exist_ok=True)
+            
+            court_lines_frame, line_mapping = self.court_line_detector.process_frame(frame, frame_num, save_intermediate, court_line_save_dir)
+            logger.debug(f"[MAIN PIPELINE - STAGE 0] Detected {len(line_mapping)} court lines")
+            
+            if frame_num == 0:
+                self.status.complete_stage(0, f"Detected {len(line_mapping)} court lines")
+                # Save court line coordinates on first frame
+                self.court_line_detector.save_line_coordinates(line_mapping, STAGE_DIRS[0])
+                if len(line_mapping) == 0:
+                    logger.warning("[MAIN PIPELINE - STAGE 0] ⚠️ NO COURT LINES DETECTED - Check HSV thresholding parameters")
+            
+            # Save Stage 0 output to session directory (court line processing steps)
+            if save_intermediate and frame_num in [0, int(self.frame_count // 3), int(self.frame_count // 1.5)]:
+                # Only save the final court line frame, not intermediate steps (those are in process_frame)
+                stage0_path = court_line_save_dir / f"frame_{frame_num:06d}_final.jpg"
+                cv2.imwrite(str(stage0_path), court_lines_frame)
+            
+            # Use court_lines_frame as base, all subsequent annotations build on top
+            annotated_frame = court_lines_frame.copy()  # Use .copy() to ensure clean slate
+            
             # Stage 1: Player Detection & Tracking
             if frame_num == 0:
                 self.status.start_stage(1)
             
-            logger.debug(f"[MAIN PIPELINE] ============ FRAME {frame_num} START ============")
             logger.debug(f"[MAIN PIPELINE - STAGE 1] Starting player detection...")
-            annotated_frame, players = self.player_detector.process_frame(frame, frame_num)
+            # Process frame to get detections (don't use its annotations to preserve court lines)
+            _, players = self.player_detector.process_frame(frame, frame_num)
             logger.debug(f"[MAIN PIPELINE - STAGE 1] Detected {len(players)} players")
             
             if frame_num == 0:
                 self.status.complete_stage(1, f"Detected {len(players)} players")
             
-            # Save Stage 1 output
-            if save_intermediate and frame_num % 30 == 0:
-                stage1_path = STAGE_DIRS[1] / f"frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage1_path), annotated_frame)
-            
-            # Stage 2: Raider Identification
+            # Stage 2: Raider Identification - NEW Simple 25% Line Crossing Method
             if frame_num == 0:
                 self.status.start_stage(2)
             
-            logger.debug(f"[MAIN PIPELINE - STAGE 2] Starting raider identification...")
-            raider_info = self.raider_identifier.get_raider_info(players)
-            raider_id = raider_info["track_id"] if raider_info else None
-            logger.debug(f"[MAIN PIPELINE - STAGE 2] Raider identified: {raider_id}")
+            logger.debug(f"[MAIN PIPELINE - STAGE 2] Starting raider detection (25% line crossing)...")
+            raider_id = self.raider_identifier.detect_raider_by_line_crossing(players)
+            logger.debug(f"[MAIN PIPELINE - STAGE 2] Raider detected: {raider_id}")
             
-            frame_with_raider = annotate_raider(frame.copy(), players, raider_info)
+            # Save Stage 1 output only when both defenders and raider detected
+            if save_intermediate and len(players) > 0 and raider_id is not None:
+                stage1_dir = self.output_dir / "stage1_detection" if self.output_dir else STAGE_DIRS[1]
+                if frame_num == 0:
+                    stage1_dir.mkdir(parents=True, exist_ok=True)
+                stage1_path = stage1_dir / f"frame_{frame_num:06d}_players.jpg"
+                cv2.imwrite(str(stage1_path), annotated_frame)
+            
+            # Log raider detection event
+            if raider_id is not None and self.raider_status.raider_id is None:
+                self.raider_status.set_raider_detected(
+                    raider_id,
+                    confidence=100.0,
+                    detection_time=timestamp,
+                    event_logger=self.event_logger
+                )
+            
+            # Get detection line x position for team classification
+            detection_line_x = self.raider_identifier.raider_detection_line_x
+            
+            # Classify all players by team
+            team_data = self.classify_players_by_team(players, raider_id, detection_line_x)
+            raider_player = team_data["raider"]
+            attackers = team_data["attackers"]
+            defenders = team_data["defenders"]
+            
+            logger.debug(f"[MAIN PIPELINE - STAGE 2] Teams: Raider={raider_id}, Attackers={len(attackers)}, Defenders={len(defenders)}")
+            
+            # Detect collisions between raider and defenders
+            colliding_defenders = []
+            collision_impact_score = 0.0
+            if raider_player:
+                colliding_defenders, collision_impact_score = self.detect_collisions(raider_player, defenders, collision_distance=100)
+                if colliding_defenders:
+                    self.last_collision_frame = frame_num
+                    self.collision_text = f"COLLISION: Raider {raider_id} hit by Defender {','.join(map(str, colliding_defenders))}"
+                    self.save_collision_data(frame_num, raider_id, colliding_defenders)
+                    
+                    # Log touch event for each defender
+                    for defender_id in colliding_defenders:
+                        self.raider_status.raider_touched(
+                            defender_id,
+                            frame_num,
+                            timestamp,
+                            event_logger=self.event_logger
+                        )
+                    
+                    logger.info(f"[MAIN PIPELINE - STAGE 2] {self.collision_text}")
+            
+            # Draw all players on frame
+            annotated_frame = self.draw_all_players(annotated_frame.copy(), players, raider_id, 
+                                                   detection_line_x, colliding_defenders)
+            
+            # Display collision text if within 20 frames of collision
+            if frame_num - self.last_collision_frame < 20:
+                # Draw collision text at top of frame
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 1.2
+                color = (0, 0, 255)  # RED
+                thickness = 2
+                text_size = cv2.getTextSize(self.collision_text, font, font_scale, thickness)[0]
+                
+                # Background box
+                text_y = 50
+                cv2.rectangle(annotated_frame, (10, text_y - text_size[1] - 10),
+                            (20 + text_size[0], text_y + 10), color, -1)
+                cv2.putText(annotated_frame, self.collision_text, (15, text_y), font, font_scale, 
+                           (255, 255, 255), thickness)
             
             if frame_num == 0:
-                status_msg = f"Raider ID: {raider_id}" if raider_id else "Raider not detected"
+                status_msg = f"Raider ID: {raider_id}" if raider_id else "Waiting for raider crossing..."
                 self.status.complete_stage(2, status_msg)
             
-            # Save Stage 2 output
-            if save_intermediate and frame_num % 30 == 0:
-                stage2_path = STAGE_DIRS[2] / f"frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage2_path), frame_with_raider)
+            # Save Stage 2 output only when raider detected
+            if save_intermediate and raider_id is not None:
+                stage2_dir = self.output_dir / "stage2_raider" if self.output_dir else STAGE_DIRS[2]
+                if frame_num == 0:
+                    stage2_dir.mkdir(parents=True, exist_ok=True)
+                stage2_path = stage2_dir / f"frame_{frame_num:06d}_raider.jpg"
+                cv2.imwrite(str(stage2_path), annotated_frame)
         
             # If no raider, skip pose-dependent stages
             if raider_id is None:
@@ -299,10 +576,15 @@ class KabaddiInjuryPipeline:
                     raider_detected=False,
                     processing_time=processing_time
                 )
-                return frame_with_raider
+                return annotated_frame
             
-            # Get raider bbox
-            raider_bbox = raider_info["bbox"]
+            # Get raider bbox from players list
+            raider_player = next((p for p in players if p["track_id"] == raider_id), None)
+            if raider_player is None:
+                logger.debug(f"[MAIN PIPELINE] Raider {raider_id} not found in players list")
+                return annotated_frame
+            
+            raider_bbox = raider_player["bbox"]
             
             # Stage 3: Pose Estimation (Raider Only)
             if frame_num == 0:
@@ -312,18 +594,13 @@ class KabaddiInjuryPipeline:
             joints = self.pose_estimator.extract_pose(frame, raider_bbox)
             angles = self.pose_estimator.calculate_joint_angles(joints) if joints else None
             logger.debug(f"[MAIN PIPELINE - STAGE 3] Pose extraction: {'SUCCESS' if joints else 'FAILED'}")
-            
-            frame_with_pose = annotate_pose(frame_with_raider.copy(), joints, angles)
+            annotated_frame = annotate_pose(annotated_frame.copy(), joints, angles)
             
             if frame_num == 0:
                 status_msg = "Pose detected" if joints else "Pose detection failed"
                 self.status.complete_stage(3, status_msg)
             
-            # Save Stage 3 output
-            if save_intermediate and frame_num % 30 == 0:
-                stage3_path = STAGE_DIRS[3] / f"frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage3_path), frame_with_pose)
-            
+
             # Stage 4: Fall Detection
             if frame_num == 0:
                 self.status.start_stage(4)
@@ -333,15 +610,28 @@ class KabaddiInjuryPipeline:
             is_falling, fall_info = self.fall_detector.detect_fall(joints, frame_num, com)
             logger.debug(f"[MAIN PIPELINE - STAGE 4] Fall detected: {is_falling}")
             
-            frame_with_fall = annotate_fall_detection(frame_with_pose.copy(), fall_info, frame_num)
+            # Log fall event
+            if is_falling and raider_id is not None:
+                severity = fall_info.get("severity", "Unknown")
+                self.raider_status.fall_detected(
+                    frame_num,
+                    timestamp,
+                    severity,
+                    event_logger=self.event_logger
+                )
+            
+            annotated_frame = annotate_fall_detection(annotated_frame.copy(), fall_info, frame_num)
             
             if frame_num == 0:
                 self.status.complete_stage(4, "Fall detection active")
             
-            # Save Stage 4 output
+            # Save Stage 4 output to session directory
             if save_intermediate and is_falling:
-                stage4_path = STAGE_DIRS[4] / f"fall_frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage4_path), frame_with_fall)
+                stage4_dir = self.output_dir / "stage4_falls" if self.output_dir else STAGE_DIRS[4]
+                if save_intermediate and frame_num == 0:
+                    stage4_dir.mkdir(parents=True, exist_ok=True)
+                stage4_path = stage4_dir / f"fall_frame_{frame_num:06d}.jpg"
+                cv2.imwrite(str(stage4_path), annotated_frame)
             
             # Stage 5: Motion Analysis
             if frame_num == 0:
@@ -360,35 +650,36 @@ class KabaddiInjuryPipeline:
             else:
                 motion_abnormality = float(motion_abnormality)
             
-            frame_with_motion = annotate_motion_analysis(frame_with_fall.copy(), motion_metrics, motion_abnormality)
+            annotated_frame = annotate_motion_analysis(annotated_frame.copy(), motion_metrics, motion_abnormality)
             
             if frame_num == 0:
                 self.status.complete_stage(5, f"Motion abnormality: {motion_abnormality:.1f}%")
             
-            # Save Stage 5 output
-            if save_intermediate and frame_num % 30 == 0:
-                stage5_path = STAGE_DIRS[5] / f"frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage5_path), frame_with_motion)
-            
+
             # Stage 6: Impact Detection
             if frame_num == 0:
                 self.status.start_stage(6)
             
             logger.debug(f"[MAIN PIPELINE - STAGE 6] Starting impact detection...")
-            impact_detected, impact_info = self.impact_detector.detect_impacts(players, raider_id, frame_num)
+            impact_detected, impact_info = self.impact_detector.detect_impacts(
+                players, raider_id, frame_num, collision_impact_score
+            )
             logger.debug(f"[MAIN PIPELINE - STAGE 6] Impact detected: {impact_detected}")
             
-            frame_with_impact = annotate_impact_detection(
-                frame_with_motion.copy(), players, raider_id, impact_info
+            annotated_frame = annotate_impact_detection(
+                annotated_frame.copy(), players, raider_id, impact_info
             )
             
             if frame_num == 0:
                 self.status.complete_stage(6, "Impact detection active")
             
-            # Save Stage 6 output
+            # Save Stage 6 output to session directory
             if save_intermediate and impact_detected:
-                stage6_path = STAGE_DIRS[6] / f"impact_frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage6_path), frame_with_impact)
+                stage6_dir = self.output_dir / "stage6_impact" if self.output_dir else STAGE_DIRS[6]
+                if save_intermediate and frame_num == 0:
+                    stage6_dir.mkdir(parents=True, exist_ok=True)
+                stage6_path = stage6_dir / f"impact_frame_{frame_num:06d}.jpg"
+                cv2.imwrite(str(stage6_path), annotated_frame)
             
             # Stage 7: Risk Fusion
             if frame_num == 0:
@@ -440,15 +731,10 @@ class KabaddiInjuryPipeline:
                 self.risk_fusion.update_injury_history(raider_id, injury_event)
                 logger.warning(f"[MAIN PIPELINE - CRITICAL] High-risk event recorded for player {raider_id} at frame {frame_num} (risk: {risk_score_val:.1f})")
             
-            final_frame = annotate_risk_score(frame_with_impact.copy(), risk_data, show_breakdown=True, risk_engine=self.risk_fusion)
+            annotated_frame = annotate_risk_score(annotated_frame.copy(), risk_data, show_breakdown=True, risk_engine=self.risk_fusion)
             
             if frame_num == 0:
                 self.status.complete_stage(7, f"Risk: {risk_data['risk_level']}")
-            
-            # Save Stage 7 output
-            if save_intermediate and frame_num % 30 == 0:
-                stage7_path = STAGE_DIRS[7] / f"frame_{frame_num:06d}.jpg"
-                cv2.imwrite(str(stage7_path), final_frame)
             
             # Log metrics
             processing_time = time.time() - start_time
@@ -467,6 +753,7 @@ class KabaddiInjuryPipeline:
             
             # Log calculation values after all processing is complete (non-intrusive)
             try:
+                raider_info = {"track_id": raider_id} if raider_id else None
                 self.logger.log_frame(frame_num, {
                     "players": players,
                     "raider_info": raider_info,
@@ -481,7 +768,12 @@ class KabaddiInjuryPipeline:
             except Exception as e:
                 logger.debug(f"[VALUE LOGGER] Could not log frame values: {e}")
             
-            return final_frame
+            # Flush events every 10 frames for dashboard updates
+            if (frame_num - self.last_flush_frame) >= 10:
+                self.event_logger.flush_events()
+                self.last_flush_frame = frame_num
+            
+            return annotated_frame
         
         except Exception as e:
             import traceback
@@ -495,7 +787,7 @@ class KabaddiInjuryPipeline:
         logger.info("[MAIN PIPELINE] Starting pipeline finalization...")
         
         # Mark all stages as completed (finalize any that are still processing or yet to start)
-        for stage_num in range(1, 8):
+        for stage_num in range(0, 8):
             stage = self.status.stages[stage_num]
             current_status = stage["status"]
             
@@ -505,8 +797,11 @@ class KabaddiInjuryPipeline:
             elif current_status == "Yet to start":
                 # If never started (e.g., raider not detected), still mark as completed
                 # since the pipeline ran but that stage was not needed
-                self.status.complete_stage(stage_num, f"{stage['name']} skipped - no raider detected")
-                logger.debug(f"Stage {stage_num} marked as completed (skipped - raider not detected)")
+                if stage_num == 0:
+                    self.status.complete_stage(stage_num, f"{stage['name']} skipped")
+                else:
+                    self.status.complete_stage(stage_num, f"{stage['name']} skipped - no raider detected")
+                logger.debug(f"Stage {stage_num} marked as completed (skipped)")
         
         # Save metrics
         self.metrics.save_metrics()

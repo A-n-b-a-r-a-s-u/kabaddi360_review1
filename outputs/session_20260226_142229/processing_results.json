@@ -1,0 +1,86 @@
+{
+  "status": "completed",
+  "results": {
+    "status": {
+      "0": {
+        "name": "Court Line Detection",
+        "status": "Completed",
+        "details": "Detected 0 court lines",
+        "output_path": null,
+        "start_time": "2026-02-26T14:22:30.231531",
+        "end_time": "2026-02-26T14:22:30.355248"
+      },
+      "1": {
+        "name": "Player Detection & Tracking",
+        "status": "Completed",
+        "details": "Player Detection & Tracking skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.632878"
+      },
+      "2": {
+        "name": "Raider Identification",
+        "status": "Completed",
+        "details": "Raider Identification skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.634862"
+      },
+      "3": {
+        "name": "Pose Estimation",
+        "status": "Completed",
+        "details": "Pose Estimation skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.635858"
+      },
+      "4": {
+        "name": "Fall Detection",
+        "status": "Completed",
+        "details": "Fall Detection skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.636876"
+      },
+      "5": {
+        "name": "Motion Analysis",
+        "status": "Completed",
+        "details": "Motion Analysis skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.637850"
+      },
+      "6": {
+        "name": "Impact Detection",
+        "status": "Completed",
+        "details": "Impact Detection skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.638845"
+      },
+      "7": {
+        "name": "Risk Fusion",
+        "status": "Completed",
+        "details": "Risk Fusion skipped - no raider detected",
+        "output_path": null,
+        "start_time": null,
+        "end_time": "2026-02-26T14:22:54.639742"
+      }
+    },
+    "metrics": {
+      "total_frames": 0,
+      "avg_detections": 0,
+      "raider_detection_rate": 0,
+      "total_fall_events": 0,
+      "avg_risk_score": 0,
+      "max_risk_score": 0,
+      "avg_processing_time": 0
+    },
+    "collision_data": {
+      "total_collisions": 0,
+      "collisions": []
+    }
+  },
+  "output_video": "C:\\Users\\anbar\\Documents\\Coding\\Claud\\kabaddi_injury_prediction\\outputs\\session_20260226_142229\\final_output.mp4",
+  "completed_at": "2026-02-26T14:22:54.715635"
+}
