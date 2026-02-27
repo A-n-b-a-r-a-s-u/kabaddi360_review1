@@ -19,12 +19,80 @@ import cv2
 import base64
 from loguru import logger
 from PIL import Image
+import subprocess
+import socket
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from main import KabaddiInjuryPipeline
 from config.config import OUTPUT_DIR, RISK_FUSION_CONFIG, INJURY_HISTORY_PATH
+
+
+# ==================== SERVER AUTO-START ====================
+def start_server_if_not_running():
+    """Start the server in background if not already running."""
+    try:
+        import requests
+        # Check if server is already running
+        response = requests.get("http://127.0.0.1:8000/health", timeout=2)
+        if response.status_code == 200:
+            return True, "ALREADY_RUNNING"
+    except:
+        pass
+    
+    # Server not running, start it
+    try:
+        import uvicorn
+        from server import app as server_app
+        
+        def run_server():
+            """Run the FastAPI server in background."""
+            try:
+                uvicorn.run(
+                    server_app,
+                    host="0.0.0.0",
+                    port=8000,
+                    log_level="info"
+                )
+            except Exception as e:
+                logger.error(f"[STREAMLIT] Server error: {e}")
+        
+        # Start server in daemon thread
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
+        
+        # Wait for server to be ready
+        import time
+        for i in range(10):
+            try:
+                import requests
+                response = requests.get("http://127.0.0.1:8000/health", timeout=2)
+                if response.status_code == 200:
+                    logger.info("[STREAMLIT] Server started successfully!")
+                    return True, "STARTED"
+            except:
+                time.sleep(1)
+        
+        return False, "TIMEOUT"
+    except Exception as e:
+        logger.error(f"[STREAMLIT] Could not start server: {e}")
+        return False, "ERROR"
+
+
+# Initialize server on app load (ONLY ONCE)
+if 'server_checked' not in st.session_state:
+    st.session_state.server_checked = True
+    st.session_state.server_started = False
+    
+    # Try to start server
+    server_running, status = start_server_if_not_running()
+    st.session_state.server_started = server_running
+    
+    if server_running:
+        logger.info("[STREAMLIT] Server is running and ready for connections")
+    else:
+        logger.warning(f"[STREAMLIT] Server startup status: {status}")
 
 
 # Page configuration
@@ -113,6 +181,107 @@ def get_video_info(video_file):
     }
 
 
+def check_server_connection():
+    """Check if server is running and return connection information."""
+    import socket
+    import requests
+    
+    try:
+        # Check localhost
+        response = requests.get("http://127.0.0.1:8000/health", timeout=2)
+        localhost_running = response.status_code == 200
+    except:
+        localhost_running = False
+    
+    # Get network IP address
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        network_ip = s.getsockname()[0]
+        s.close()
+    except:
+        network_ip = "127.0.0.1"
+    
+    return {
+        "localhost_running": localhost_running,
+        "network_ip": network_ip,
+        "localhost_url": "http://127.0.0.1:8000",
+        "network_url": f"http://{network_ip}:8000",
+        "websocket_url": f"ws://{network_ip}:8000/ws",
+        "api_docs": f"http://{network_ip}:8000/docs"
+    }
+
+
+def display_server_connection_info():
+    """Display server connection status and URLs."""
+    connection_info = check_server_connection()
+    
+    col1, col2, col3 = st.columns(3)
+    
+    if connection_info["localhost_running"]:
+        status = "🟢 READY"
+        with col1:
+            st.metric("Server Status", status, delta="ACTIVE")
+    else:
+        status = "🔴 ERROR"
+        with col1:
+            st.metric("Server Status", status, delta="Check server")
+    
+    with col2:
+        st.metric("Laptop IP", connection_info["network_ip"])
+    
+    with col3:
+        st.metric("Server Port", "8000")
+    
+    # Display connection URLs
+    st.markdown("### 📱 Connection Information for Expo App")
+    
+    connection_code = f"""
+**Your Laptop Details:**
+- Laptop IP Address: `{connection_info['network_ip']}`
+- Server Port: `8000`
+- Dashboard Port: `8501`
+
+**For Expo App Connection:**
+- API Base URL: `{connection_info['network_url']}`
+- WebSocket URL: `{connection_info['websocket_url']}`
+
+**For Browser:**
+- Streamlit Dashboard: `http://localhost:8501`
+- FastAPI Docs: `{connection_info['api_docs']}`
+- Server Health Check: `{connection_info['network_url']}/health`
+    """
+    
+    st.markdown(connection_code)
+    
+    # Status message
+    st.markdown("---")
+    if connection_info["localhost_running"]:
+        st.success(f"""
+        ✅ **Server is READY and WAITING FOR CONNECTIONS!**
+        
+        Your Expo app can now connect to: **`{connection_info['network_url']}`**
+        
+        **Next Steps:**
+        1. Your Expo app connects to the server (using WebSocket)
+        2. Upload a video in the "Upload & Process" tab below
+        3. Server will stream events as video is processed:
+           - 🏃 Raider identification
+           - ⚠️ Collision detection
+           - 💥 Fall detection
+           - 📊 Injury risk updates
+        """)
+    else:
+        st.error(f"""
+        ❌ **Server is NOT RUNNING**
+        
+        Something went wrong starting the server. Please:
+        1. Refresh the page (F5)
+        2. If still not working, check the terminal logs
+        3. You can manually start the server in terminal: `python server.py`
+        """)
+
+
 def load_live_events(output_dir):
     """Load live events from JSON file. Returns None if file doesn't exist."""
     try:
@@ -128,12 +297,12 @@ def load_live_events(output_dir):
 def display_event_log(events_data, max_messages=4):
     """Display event log with latest events. Max 4 recent messages."""
     if not events_data or 'events' not in events_data:
-        st.info("⏳ Waiting for raider detection...")
+        st.info("Waiting for raider detection...")
         return
     
     events = events_data.get('events', [])
     if not events:
-        st.info("⏳ Waiting for raider detection...")
+        st.info("Waiting for raider detection...")
         return
     
     # Show only latest max_messages events
@@ -160,7 +329,7 @@ def display_raider_status_card(events_data):
     if not events_data:
         st.markdown("""
         <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center;">
-            <h3 style="color: #1976D2;">⏳ Waiting for Raider Detection</h3>
+            <h3 style="color: #1976D2;">Waiting for Raider Detection</h3>
             <p>Processing video... Raider will be detected once they cross the court line.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -171,7 +340,7 @@ def display_raider_status_card(events_data):
     if raider_status.get('id') is None:
         st.markdown("""
         <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center;">
-            <h3 style="color: #1976D2;">⏳ Waiting for Raider Detection</h3>
+            <h3 style="color: #1976D2;">Waiting for Raider Detection</h3>
             <p>Processing video... Raider will be detected once they cross the court line.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -194,27 +363,24 @@ def display_raider_status_card(events_data):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.metric("🎯 Raider ID", f"#{raider_id}")
-            st.metric("⏱️ Detected At", time_str)
+            st.metric("Raider ID", f"#{raider_id}")
+            st.metric("Detected At", time_str)
         
         with col2:
-            st.metric("📊 Confidence", f"{confidence:.1f}%")
-            st.metric("💥 Touches by Defenders", touch_count)
+            st.metric("Confidence", f"{confidence:.1f}%")
+            st.metric("Touches by Defenders", touch_count)
         
         # State indicator
         state_color = "#FFC107"  # Yellow for moving
-        state_emoji = "🚴"
         
         if "Fall" in str(state):
             state_color = "#F44336"  # Red for fallen
-            state_emoji = "⬇️"
         elif "Touch" in str(state):
             state_color = "#FF9100"  # Orange for touched
-            state_emoji = "💪"
         
         st.markdown(f"""
         <div style="background-color: {state_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: bold;">
-            {state_emoji} {state}
+            {state}
         </div>
         """, unsafe_allow_html=True)
 
@@ -283,11 +449,11 @@ def display_live_processing_panel():
         col_status, col_events = st.columns([1, 2])
         
         with col_status:
-            st.markdown("### 🎯 Raider Status")
+            st.markdown("### Raider Status")
             status_placeholder = st.empty()
         
         with col_events:
-            st.markdown("### 📝 Live Event Log")
+            st.markdown("### Live Event Log")
             event_placeholder = st.empty()
         
         # Polling loop - wait for completion marker file
@@ -310,7 +476,7 @@ def display_live_processing_panel():
                 st.session_state.is_processing = False
                 st.session_state.processing_complete = False
                 with event_placeholder.container():
-                    st.error("❌ Processing failed!")
+                    st.error("Processing failed!")
                 break
             
             # Check timeout
@@ -318,7 +484,7 @@ def display_live_processing_panel():
             if elapsed > max_wait_time:
                 st.session_state.is_processing = False
                 with event_placeholder.container():
-                    st.error("❌ Processing timeout (>1 hour)")
+                    st.error("Processing timeout (>1 hour)")
                 break
             
             # Load live events from file
@@ -345,9 +511,9 @@ def display_live_processing_panel():
                         st.session_state.session_events_archive = final_data.get('timeline', [])
             
             if completion_marker.exists():
-                st.success("✅ Processing Complete!")
+                st.success("Processing Complete!")
             else:
-                st.warning("⚠️ Processing ended unexpectedly")
+                st.warning("Processing ended unexpectedly")
         
         with status_placeholder.container():
             display_raider_status_card(live_events)
@@ -515,7 +681,7 @@ def display_stage_status(status):
         st.warning("Status information not available")
         return
     
-    st.markdown("### 📊 Pipeline Stage Status")
+    st.markdown("### Pipeline Stage Status")
     
     # Create 3 columns for stages
     for row in range(0, 7, 3):
@@ -533,13 +699,13 @@ def display_stage_status(status):
             
             with col:
                 if stage_status == "Completed":
-                    st.success(f"✅ **{stage_name}**")
+                    st.success(f"**{stage_name}**")
                 elif stage_status == "Processing":
-                    st.info(f"⏳ **{stage_name}**")
+                    st.info(f"**{stage_name}**")
                 elif stage_status == "Failed":
-                    st.error(f"❌ **{stage_name}**")
+                    st.error(f"**{stage_name}**")
                 else:
-                    st.warning(f"⏸️ **{stage_name}**")
+                    st.warning(f"**{stage_name}**")
                 
                 if stage_details:
                     st.caption(stage_details)
@@ -572,6 +738,11 @@ def main():
     st.markdown('<div class="main-header"> Kabaddi Injury Aware System</div>', 
                 unsafe_allow_html=True)
     st.markdown("**Done by Anbarasu with the guidance of Dr. T. Mala Mam (Professor)**")
+    
+    # Display server connection info
+    st.markdown("---")
+    display_server_connection_info()
+    st.markdown("---")
     
     # Processing parameters
     # Always enable intermediate steps
@@ -606,7 +777,7 @@ def main():
             
             # Check if already processing another video
             if st.session_state.is_processing:
-                st.error("⚠️ **ANOTHER VIDEO IS BEING PROCESSED**. Please wait for it to complete before uploading a new video.")
+                st.error("**ANOTHER VIDEO IS BEING PROCESSED**. Please wait for it to complete before uploading a new video.")
                 st.info("Current processing will continue in the background. Check back soon!")
                 
                 # Show live updates while processing
@@ -614,7 +785,7 @@ def main():
             
             elif not st.session_state.processing_complete:
                 # Start new processing
-                st.info("🎬 Starting video analysis... This may take several minutes.")
+                st.info("Starting video analysis... This may take several minutes.")
                 st.write("Video will be processed in the background. Live updates will appear below:")
                 
                 # Initialize output directory
@@ -644,10 +815,10 @@ def main():
                 # After processing completes, show results
                 if st.session_state.processing_complete:
                     st.markdown("---")
-                    st.success("🎉 **Processing Completed Successfully!**")
+                    st.success("**Processing Completed Successfully!**")
                     
                     # Display video playback
-                    st.markdown("### 🎬 Processed Video")
+                    st.markdown("### Processed Video")
                     final_video = Path(st.session_state.output_dir) / "final_output.mp4"
                     if final_video.exists():
                         st.video(str(final_video))
@@ -655,7 +826,7 @@ def main():
                         # Add download button
                         with open(final_video, "rb") as f:
                             st.download_button(
-                                label="⬇️ Download Annotated Video",
+                                label="Download Annotated Video",
                                 data=f.read(),
                                 file_name="kabaddi_analysis.mp4",
                                 mime="video/mp4"
@@ -664,7 +835,7 @@ def main():
                     st.markdown("---")
                     
                     # Display Intermediate Outputs with Dropdowns
-                    st.markdown("### 📸 Processing Results")
+                    st.markdown("### Processing Results")
                     
                     session_dir = st.session_state.output_dir
                     
@@ -693,7 +864,7 @@ def main():
                     if raider_dir.exists():
                         raider_images = sorted(raider_dir.glob("*.jpg"))
                         if raider_images:
-                            with st.expander("🎯 Raider Detection"):
+                            with st.expander("Raider Detection"):
                                 cols = st.columns(2)
                                 for idx, img_path in enumerate(raider_images[:10]):
                                     with cols[idx % 2]:
@@ -704,7 +875,7 @@ def main():
                     if impact_dir.exists():
                         impact_images = sorted(impact_dir.glob("*.jpg"))
                         if impact_images:
-                            with st.expander("💥 Impact Detection"):
+                            with st.expander("Impact Detection"):
                                 cols = st.columns(2)
                                 for idx, img_path in enumerate(impact_images[:10]):
                                     with cols[idx % 2]:
@@ -715,7 +886,7 @@ def main():
                     if fall_dir.exists():
                         fall_images = sorted(fall_dir.glob("*.jpg"))
                         if fall_images:
-                            with st.expander("🤸 Fall Detection"):
+                            with st.expander("Fall Detection"):
                                 cols = st.columns(2)
                                 for idx, img_path in enumerate(fall_images[:10]):
                                     with cols[idx % 2]:
@@ -724,7 +895,7 @@ def main():
                     st.markdown("---")
                     
                     # Display Key Metrics and Scores
-                    st.markdown("### 📈 Key Performance Metrics")
+                    st.markdown("### Key Performance Metrics")
                     
                     output_dir = st.session_state.output_dir
                     summary = load_pipeline_summary(output_dir)
@@ -734,30 +905,29 @@ def main():
                         
                         with col1:
                             avg_risk = summary.get('risk', {}).get('avg_risk', 0)
-                            risk_color = "🟢" if avg_risk < 30 else "🟠" if avg_risk < 70 else "🔴"
                             st.metric(
-                                f"{risk_color} Average Risk",
+                                f"Average Risk",
                                 f"{avg_risk:.1f}%"
                             )
                         
                         with col2:
                             total_falls = summary.get('falls', {}).get('total_falls', 0)
-                            st.metric("🤸 Total Falls", total_falls)
+                            st.metric("Total Falls", total_falls)
                         
                         with col3:
                             total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
-                            st.metric("💥 Total Impacts", total_impacts)
+                            st.metric("Total Impacts", total_impacts)
                         
                         with col4:
                             high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
-                            st.metric("⚠️ High Risk Frames", high_risk_frames)
+                            st.metric("High Risk Frames", high_risk_frames)
                     
     with tab2:
-        st.markdown("### 📊 Analysis Results")
+        st.markdown("### Analysis Results")
         logger.debug(f"[STREAMLIT APP] Results tab loaded. Processing complete: {st.session_state.processing_complete}")
         
         if not st.session_state.processing_complete:
-            st.info("👈 Please upload and process a video first")
+            st.info("Please upload and process a video first")
             logger.debug("[STREAMLIT APP] Waiting for video processing")
         else:
             # Safety check - ensure output_dir is valid
@@ -784,34 +954,33 @@ def main():
                     # Key Metrics
                     if summary:
                         logger.debug("[STREAMLIT APP] Displaying key metrics from summary")
-                        st.markdown("### 📈 Key Performance Metrics")
+                        st.markdown("### Key Performance Metrics")
                         
                         col1, col2, col3, col4 = st.columns(4)
                         
                         with col1:
                             avg_risk = summary.get('risk', {}).get('avg_risk', 0)
-                            risk_color = "🟢" if avg_risk < 30 else "🟠" if avg_risk < 70 else "🔴"
                             st.metric(
-                                f"{risk_color} Average Risk",
+                                f"Average Risk",
                                 f"{avg_risk:.1f}%"
                             )
                         
                         with col2:
                             total_falls = summary.get('falls', {}).get('total_falls', 0)
-                            st.metric("🤸 Total Falls", total_falls)
+                            st.metric("Total Falls", total_falls)
                         
                         with col3:
                             total_impacts = summary.get('impacts', {}).get('total_impacts', 0)
-                            st.metric("💥 Total Impacts", total_impacts)
+                            st.metric("Total Impacts", total_impacts)
                         
                         with col4:
                             high_risk_frames = summary.get('risk', {}).get('high_risk_frames', 0)
-                            st.metric("⚠️ High Risk Frames", high_risk_frames)
+                            st.metric("High Risk Frames", high_risk_frames)
                         
                         st.markdown("---")
                         
                         # Risk Timeline Chart
-                        st.markdown("### 📉 Risk Score Timeline")
+                        st.markdown("### Risk Score Timeline")
                         risk_chart = create_risk_timeline_chart(summary)
                         if risk_chart:
                             st.plotly_chart(risk_chart, use_column_width=True)
@@ -841,12 +1010,54 @@ def main():
                         st.markdown("---")
                         
                         # Detailed Statistics
-                        with st.expander("📊 Detailed Statistics", expanded=False):
+                        with st.expander("Detailed Statistics", expanded=False):
                             st.json(summary)
                 except Exception as e:
                     logger.error(f"[STREAMLIT APP] Error loading results: {str(e)}")
-                    st.error(f"❌ Error loading results: {str(e)}")
+                    st.error(f"Error loading results: {str(e)}")
 
 
 if __name__ == "__main__":
+    # Print connection info to CLI
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        network_ip = s.getsockname()[0]
+        s.close()
+    except:
+        network_ip = "127.0.0.1"
+    
+    print("\n" + "="*90)
+    print(" "*20 + "KABADDI INJURY PREDICTION SYSTEM")
+    print("="*90)
+    print("\n✅ STREAMLIT DASHBOARD STARTED!")
+    print(f"   📍 Dashboard URL: http://localhost:8501")
+    print()
+    print("✅ SERVER STARTED AUTOMATICALLY!")
+    print(f"   🌐 Server URL:     http://{network_ip}:8000")
+    print(f"   🔌 WebSocket URL:  ws://{network_ip}:8000/ws")
+    print()
+    print("📱 YOUR EXPO APP CAN NOW CONNECT:")
+    print(f"   💻 Laptop IP:      {network_ip}")
+    print(f"   🔗 Connection URL: http://{network_ip}:8000")
+    print()
+    print("⚙️ WORKFLOW:")
+    print("   1. Expo app connects to WebSocket: ws://{network_ip}:8000/ws")
+    print("   2. Go to Dashboard: http://localhost:8501")
+    print("   3. Upload Kabaddi video in 'Upload & Process' tab")
+    print("   4. Main pipeline starts processing video")
+    print("   5. Server broadcasts events to Expo app in real-time:")
+    print("      - 🏃 Raider identification")
+    print("      - ⚠️  Collision detection")
+    print("      - 💥 Fall detection")
+    print("      - 📊 Injury risk updates")
+    print()
+    print("📚 API DOCUMENTATION:")
+    print(f"   📖 FastAPI Docs: http://{network_ip}:8000/docs")
+    print(f"   💚 Health Check:  http://{network_ip}:8000/health")
+    print()
+    print("="*90)
+    print()
+    
     main()

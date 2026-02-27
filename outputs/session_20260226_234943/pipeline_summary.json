@@ -1,0 +1,546 @@
+{
+  "falls": {
+    "total_falls": 0,
+    "avg_severity": 0.0,
+    "max_severity": 0.0,
+    "fall_frames": []
+  },
+  "impacts": {
+    "total_impacts": 15,
+    "avg_severity": 45.78960356918845,
+    "max_severity": 61.3886409285485,
+    "impact_frames": [
+      91,
+      92,
+      93,
+      94,
+      95,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124
+    ],
+    "events": [
+      {
+        "frame": 91,
+        "severity": 60.79912439329568,
+        "num_colliding": 1,
+        "num_approaching": 1,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 95.25754563287887,
+            "velocity": 12.010412149464313
+          }
+        ],
+        "approaching_defenders": [
+          {
+            "id": 6,
+            "distance": 95.25754563287887,
+            "velocity": 12.010412149464313,
+            "angle": 24.448099440385644
+          }
+        ],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 92,
+        "severity": 61.3886409285485,
+        "num_colliding": 1,
+        "num_approaching": 1,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 85.23496934944014,
+            "velocity": 12.010412149464313
+          }
+        ],
+        "approaching_defenders": [
+          {
+            "id": 6,
+            "distance": 85.23496934944014,
+            "velocity": 12.010412149464313,
+            "angle": 28.693095604690424
+          }
+        ],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 93,
+        "severity": 60.96396873295245,
+        "num_colliding": 1,
+        "num_approaching": 1,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 77.6659513557904,
+            "velocity": 11.25
+          }
+        ],
+        "approaching_defenders": [
+          {
+            "id": 6,
+            "distance": 77.6659513557904,
+            "velocity": 11.25,
+            "angle": 34.5085229876684
+          }
+        ],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 94,
+        "severity": 60.56584008605403,
+        "num_colliding": 1,
+        "num_approaching": 1,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 68.8839603971781,
+            "velocity": 11.2527774349269
+          }
+        ],
+        "approaching_defenders": [
+          {
+            "id": 6,
+            "distance": 68.8839603971781,
+            "velocity": 11.2527774349269,
+            "angle": 40.97210350353104
+          }
+        ],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 95,
+        "severity": 40.84097268032322,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 65.79513659838392,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 115,
+        "severity": 40.47520794984263,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 67.62396025078685,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 116,
+        "severity": 41.83447493940356,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 60.8276253029822,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 117,
+        "severity": 41.412704817952346,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 62.93647591023825,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 118,
+        "severity": 42.120606076066004,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 59.39696961966999,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 119,
+        "severity": 41.97835285828103,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 60.108235708594876,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 120,
+        "severity": 41.97835285828103,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 60.108235708594876,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 121,
+        "severity": 42.11723937798964,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 59.413803110051795,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 122,
+        "severity": 42.25436251197918,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 58.728187440104094,
+            "velocity": 9.762812094883317
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 123,
+        "severity": 34.086185699369395,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 99.56907150315303,
+            "velocity": 38.017265814363874
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      },
+      {
+        "frame": 124,
+        "severity": 34.02801962748811,
+        "num_colliding": 1,
+        "num_approaching": 0,
+        "colliding_defenders": [
+          {
+            "id": 6,
+            "distance": 99.85990186255943,
+            "velocity": 35.78407467016578
+          }
+        ],
+        "approaching_defenders": [],
+        "collision_score": 0.0
+      }
+    ]
+  },
+  "risk": {
+    "avg_risk": 26.548226964682947,
+    "max_risk": 36.153547737423196,
+    "min_risk": 0.0,
+    "total_frames": 26,
+    "high_risk_frames": 0,
+    "medium_risk_frames": 10,
+    "low_risk_frames": 14,
+    "timeline": [
+      {
+        "frame": 87,
+        "risk_score": 0.0,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 0.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 88,
+        "risk_score": 3.7772430558982553,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 25.181620372655036,
+        "motion_abnormality": 0.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 89,
+        "risk_score": 8.97776248557486,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 27.096004483093566,
+        "motion_abnormality": 45.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 90,
+        "risk_score": 14.077626104823437,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 27.090723208563915,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 91,
+        "risk_score": 19.160048347456488,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 60.79912439329568,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 92,
+        "risk_score": 22.577805669307832,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 61.3886409285485,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 93,
+        "risk_score": 25.000860662247533,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 60.96396873295245,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 94,
+        "risk_score": 26.803222082693615,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 60.56584008605403,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 95,
+        "risk_score": 27.547563162849542,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 40.84097268032322,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 115,
+        "risk_score": 28.132063085059865,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 40.47520794984263,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 116,
+        "risk_score": 29.283724848401793,
+        "risk_level": "LOW",
+        "fall_severity": 20.0,
+        "impact_severity": 41.83447493940356,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 117,
+        "risk_score": 29.941232064817118,
+        "risk_level": "LOW",
+        "fall_severity": 10.0,
+        "impact_severity": 41.412704817952346,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 118,
+        "risk_score": 30.513920507740405,
+        "risk_level": "UNKNOWN",
+        "fall_severity": 10.0,
+        "impact_severity": 42.120606076066004,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 119,
+        "risk_score": 31.001748032722112,
+        "risk_level": "MEDIUM",
+        "fall_severity": 10.0,
+        "impact_severity": 41.97835285828103,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 120,
+        "risk_score": 31.191198554372928,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 41.97835285828103,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 121,
+        "risk_score": 33.45021000859939,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 42.11723937798964,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 122,
+        "risk_score": 35.20833151805254,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 42.25436251197918,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 123,
+        "risk_score": 36.01480180904472,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 34.086185699369395,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 124,
+        "risk_score": 36.153547737423196,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 34.02801962748811,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 125,
+        "risk_score": 34.937565249557295,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 126,
+        "risk_score": 33.70979243098631,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 127,
+        "risk_score": 32.490513056327266,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 128,
+        "risk_score": 31.279196254606187,
+        "risk_level": "MEDIUM",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 129,
+        "risk_score": 30.462376800999728,
+        "risk_level": "UNKNOWN",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 85.0,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 130,
+        "risk_score": 29.650566387346657,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 0.0,
+        "motion_abnormality": 84.86162472062713,
+        "injury_history_score": 0.0
+      },
+      {
+        "frame": 131,
+        "risk_score": 28.91098116484757,
+        "risk_level": "LOW",
+        "fall_severity": 0.0,
+        "impact_severity": 28.684868033025715,
+        "motion_abnormality": 84.40441493770827,
+        "injury_history_score": 0.0
+      }
+    ]
+  },
+  "motion": {
+    "avg_abnormality": 76.89484767916674,
+    "max_abnormality": 85.0,
+    "min_abnormality": 0.0,
+    "std_abnormality": 23.48677452847972,
+    "total_frames": 26
+  },
+  "metrics": {
+    "total_frames": 113,
+    "avg_detections": 11.849557522123893,
+    "raider_detection_rate": 0.23008849557522124,
+    "total_fall_events": 0,
+    "avg_risk_score": 6.108441602493422,
+    "max_risk_score": 36.153547737423196,
+    "avg_processing_time": 0.17361695787547965
+  }
+}

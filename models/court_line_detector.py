@@ -465,7 +465,7 @@ class CourtLineDetector:
         
         return annotated_frame
     
-    def process_frame(self, frame: np.ndarray, frame_num: int = 0, save_intermediate: bool = False, output_dir: Path = None) -> Tuple[np.ndarray, Dict]:
+    def process_frame(self, frame: np.ndarray, frame_num: int = 0) -> Tuple[np.ndarray, Dict]:
         """
         Process single frame through complete court line detection pipeline.
         
@@ -481,8 +481,6 @@ class CourtLineDetector:
         Args:
             frame: Input frame in BGR format
             frame_num: Frame number for logging
-            save_intermediate: Whether to save intermediate processing steps
-            output_dir: Directory to save intermediate images
             
         Returns:
             Tuple of (annotated_frame, line_mapping)
@@ -493,25 +491,15 @@ class CourtLineDetector:
         
         # Step 1: Detect white mask
         white_mask = self.detect_white_mask(frame)
-        if save_intermediate and output_dir and frame_num in [0, 100, 200]:  # Save only 3 key frames
-            cv2.imwrite(str(output_dir / f"{frame_num:06d}_01_greyscale.jpg"), cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-            cv2.imwrite(str(output_dir / f"{frame_num:06d}_02_blurred.jpg"), cv2.GaussianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), (5, 5), 0))
         
         # Step 2: Apply morphological operations
         morph_mask = self.apply_morphological_operations(white_mask)
         
         # Step 3: Canny edge detection
         edges = self.detect_edges(morph_mask)
-        if save_intermediate and output_dir and frame_num in [0, 100, 200]:  # Save for 3 key frames
-            cv2.imwrite(str(output_dir / f"{frame_num:06d}_03_canny_edges.jpg"), edges)
         
         # Step 4: Hough Line Transform
         detected_lines = self.detect_lines(edges)
-        
-        # Save hough line visualization
-        if save_intermediate and output_dir and frame_num in [0, 100, 200]:  # Save for 3 key frames
-            hough_vis = self._visualize_hough_lines(edges, detected_lines, frame.shape)
-            cv2.imwrite(str(output_dir / f"{frame_num:06d}_04_hough_lines.jpg"), hough_vis)
         
         # Step 5: Classify lines
         classification_result = self.classify_lines(detected_lines)
@@ -530,27 +518,6 @@ class CourtLineDetector:
         logger.debug(f"[STAGE 0 - COURT LINES] Frame {frame_num}: Detected {len(line_mapping)} court lines")
         
         return annotated_frame, line_mapping
-    
-    def _visualize_hough_lines(self, edges: np.ndarray, lines: List[Tuple], frame_shape: Tuple) -> np.ndarray:
-        """
-        Visualize Hough lines on a black background.
-        
-        Args:
-            edges: Edge map
-            lines: Detected lines from Hough transform
-            frame_shape: Shape of original frame
-            
-        Returns:
-            Visualization image with white lines on black background
-        """
-        # Create black canvas
-        vis = np.zeros((frame_shape[0], frame_shape[1]), dtype=np.uint8)
-        
-        if lines:
-            for x1, y1, x2, y2 in lines:
-                cv2.line(vis, (x1, y1), (x2, y2), 255, 2)
-        
-        return vis
     
     def get_line_coordinates(self) -> Dict[str, Dict]:
         """

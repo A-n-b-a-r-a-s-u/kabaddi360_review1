@@ -1,0 +1,26 @@
+{
+  "last_update": "2026-02-26T23:51:09.092561",
+  "total_events": 1,
+  "current_frame": 408,
+  "events": [
+    {
+      "type": "RAIDER_DETECTED",
+      "timestamp": 2.9,
+      "time_str": "00:02",
+      "message": "\ud83c\udfaf Raider Detected",
+      "details": {
+        "raider_id": 5,
+        "confidence": 100.0,
+        "timestamp": 2.9
+      },
+      "logged_at": "2026-02-26T23:49:59.390403"
+    }
+  ],
+  "raider_status": {
+    "id": 5,
+    "confidence": 100.0,
+    "state": "Moving",
+    "detected_at": 2.9,
+    "touch_count": 0
+  }
+}

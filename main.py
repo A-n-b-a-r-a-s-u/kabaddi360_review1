@@ -12,6 +12,9 @@ from tqdm import tqdm
 import sys
 from datetime import datetime
 import json
+import threading
+import time
+import requests
 
 # Import all modules
 from config.config import (
@@ -33,6 +36,15 @@ from models.risk_fusion import RiskFusionEngine, annotate_risk_score
 from utils.value_logger import ValueLogger
 from utils.event_logger import EventLogger
 from utils.raider_status_tracker import RaiderStatusTracker
+
+# Server imports
+try:
+    import uvicorn
+    from server import app as server_app
+    SERVER_AVAILABLE = True
+except ImportError:
+    logger.warning("Server dependencies not available. Install with: pip install uvicorn fastapi")
+    SERVER_AVAILABLE = False
 
 
 # Configure logging with timestamped files
@@ -86,6 +98,190 @@ def configure_logging(output_dir: Path):
     logger.info(f"Logging configured - File: {log_file}")
     return log_file
 
+
+# ============================================================================
+# SERVER INITIALIZATION AND MANAGEMENT
+# ============================================================================
+
+SERVER_HOST = "127.0.0.1"
+SERVER_PORT = 8000
+SERVER_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
+server_thread = None
+server_running = False
+
+def start_server():
+    """Start FastAPI server in background thread."""
+    global server_thread, server_running
+    
+    if not SERVER_AVAILABLE:
+        logger.warning("Server not available. Install uvicorn and fastapi dependencies.")
+        return False
+    
+    if server_running:
+        logger.info("Server already running.")
+        return True
+    
+    def run_server():
+        """Run server in thread."""
+        try:
+            print("\n" + "="*70)
+            print("          KABADDI INJURY PREDICTION SERVER STARTING")
+            print("="*70)
+            print(f"Server starting on: {SERVER_URL}")
+            print(f"WebSocket endpoint: ws://{SERVER_HOST}:{SERVER_PORT}/ws")
+            print(f"API documentation: {SERVER_URL}/docs")
+            print("="*70 + "\n")
+            
+            logger.info(f"[SERVER] Starting server on {SERVER_URL}")
+            
+            uvicorn.run(
+                server_app,
+                host=SERVER_HOST,
+                port=SERVER_PORT,
+                log_level="info",
+                access_log=True
+            )
+        except Exception as e:
+            logger.error(f"[SERVER] Failed to start server: {e}")
+    
+    # Start server in daemon thread
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    server_running = True
+    
+    # Wait for server to be ready
+    max_retries = 10
+    for i in range(max_retries):
+        try:
+            response = requests.get(f"{SERVER_URL}/health", timeout=2)
+            if response.status_code == 200:
+                logger.info(f"[SERVER] Server is ready and healthy")
+                print("\n✓ Server is READY and HEALTHY")
+                print(f"✓ Listening on {SERVER_URL}")
+                print("✓ Pipeline can now send real-time events\n")
+                return True
+        except:
+            if i < max_retries - 1:
+                time.sleep(0.5)
+    
+    logger.warning("[SERVER] Server started but health check failed - may still be initializing")
+    return True
+
+def send_raider_identified_event(raider_id: int, frame: int, timestamp: float, confidence: float = 1.0):
+    """Send raider identification event to server."""
+    if not server_running:
+        return
+    
+    try:
+        event_data = {
+            "raider_id": raider_id,
+            "frame": frame,
+            "timestamp": timestamp,
+            "confidence": confidence
+        }
+        
+        response = requests.post(
+            f"{SERVER_URL}/event/raider-identified",
+            json=event_data,
+            timeout=2
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"[EVENT] Raider Identified event sent (ID: {raider_id}, Frame: {frame})")
+        else:
+            logger.debug(f"[EVENT] Server returned {response.status_code}")
+    except Exception as e:
+        logger.debug(f"[EVENT] Could not send raider event: {e}")
+
+def send_injury_risk_event(raider_id: int, frame: int, timestamp: float, risk_score: float, 
+                          risk_level: str, components: Dict):
+    """Send injury risk update event to server."""
+    if not server_running:
+        return
+    
+    try:
+        event_data = {
+            "raider_id": raider_id,
+            "frame": frame,
+            "timestamp": timestamp,
+            "risk_score": float(risk_score),
+            "risk_level": risk_level,
+            "components": {
+                "fall_severity": float(components.get("fall_severity", 0)),
+                "impact_severity": float(components.get("impact_severity", 0)),
+                "motion_abnormality": float(components.get("motion_abnormality", 0)),
+                "injury_history": float(components.get("injury_history", 0))
+            }
+        }
+        
+        response = requests.post(
+            f"{SERVER_URL}/event/injury-risk",
+            json=event_data,
+            timeout=2
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"[EVENT] Injury Risk event sent (Score: {risk_score:.1f}, Level: {risk_level})")
+        else:
+            logger.debug(f"[EVENT] Server returned {response.status_code}")
+    except Exception as e:
+        logger.debug(f"[EVENT] Could not send injury risk event: {e}")
+
+def send_collision_event(raider_id: int, frame: int, timestamp: float, 
+                        defender_ids: List[int], severity: float):
+    """Send collision/touch event to server."""
+    if not server_running:
+        return
+    
+    try:
+        event_data = {
+            "raider_id": raider_id,
+            "frame": frame,
+            "timestamp": timestamp,
+            "defender_ids": defender_ids,
+            "collision_severity": float(severity)
+        }
+        
+        response = requests.post(
+            f"{SERVER_URL}/event/collision",
+            json=event_data,
+            timeout=2
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"[EVENT] Collision event sent (Defenders: {defender_ids})")
+        else:
+            logger.debug(f"[EVENT] Server returned {response.status_code}")
+    except Exception as e:
+        logger.debug(f"[EVENT] Could not send collision event: {e}")
+
+def send_fall_event(raider_id: int, frame: int, timestamp: float, 
+                   fall_severity: float, indicators: List[str]):
+    """Send fall detection event to server."""
+    if not server_running:
+        return
+    
+    try:
+        event_data = {
+            "raider_id": raider_id,
+            "frame": frame,
+            "timestamp": timestamp,
+            "fall_severity": float(fall_severity),
+            "indicators": indicators
+        }
+        
+        response = requests.post(
+            f"{SERVER_URL}/event/fall",
+            json=event_data,
+            timeout=2
+        )
+        
+        if response.status_code == 200:
+            logger.critical(f"[EVENT] FALL event sent (Severity: {fall_severity:.1f})")
+        else:
+            logger.debug(f"[EVENT] Server returned {response.status_code}")
+    except Exception as e:
+        logger.debug(f"[EVENT] Could not send fall event: {e}")
 
 class KabaddiInjuryPipeline:
     """Main pipeline orchestrator for injury prediction."""
@@ -145,6 +341,11 @@ class KabaddiInjuryPipeline:
         self.collision_text = ""  # Text to display
         self.collision_history = []  # List of all collisions
         
+        # Server event tracking
+        self.raider_identified_sent = False  # Flag to send raider event only once
+        self.last_risk_event_frame = -1  # Track last risk event frame for throttling
+        self.risk_event_throttle = 5  # Send risk events every N frames max
+        
         logger.info(f"Pipeline initialized for video: {video_path}")
     
     def _initialize_modules(self, frame_width: int, frame_height: int):
@@ -174,6 +375,16 @@ class KabaddiInjuryPipeline:
         logger.info("="*60)
         logger.info("STARTING KABADDI INJURY PREDICTION PIPELINE")
         logger.info("="*60)
+        
+        # Start server for real-time event streaming
+        print("\n" + "="*70)
+        print("                    INITIALIZING SERVER")
+        print("="*70)
+        if not start_server():
+            logger.warning("Could not start server. Continuing without real-time events.")
+        else:
+            logger.info("[MAIN] Server started successfully - real-time events enabled")
+        print("="*70 + "\n")
         
         # Open video
         reader = VideoReader(str(self.video_path))
@@ -445,7 +656,7 @@ class KabaddiInjuryPipeline:
             if save_intermediate and frame_num == 0:
                 court_line_save_dir.mkdir(parents=True, exist_ok=True)
             
-            court_lines_frame, line_mapping = self.court_line_detector.process_frame(frame, frame_num, save_intermediate, court_line_save_dir)
+            court_lines_frame, line_mapping = self.court_line_detector.process_frame(frame, frame_num)
             logger.debug(f"[MAIN PIPELINE - STAGE 0] Detected {len(line_mapping)} court lines")
             
             if frame_num == 0:
@@ -484,6 +695,20 @@ class KabaddiInjuryPipeline:
             raider_id = self.raider_identifier.detect_raider_by_line_crossing(players)
             logger.debug(f"[MAIN PIPELINE - STAGE 2] Raider detected: {raider_id}")
             
+            # Send raider identification event to server (only once)
+            if raider_id is not None and not self.raider_identified_sent:
+                self.raider_identified_sent = True
+                send_raider_identified_event(
+                    raider_id=raider_id,
+                    frame=frame_num,
+                    timestamp=timestamp,
+                    confidence=1.0
+                )
+                print(f"\n{'='*70}")
+                print(f"✓ RAIDER IDENTIFIED: Track ID = {raider_id}, Frame = {frame_num}")
+                print(f"  Event sent to server")
+                print(f"{'='*70}\n")
+            
             # Save Stage 1 output only when both defenders and raider detected
             if save_intermediate and len(players) > 0 and raider_id is not None:
                 stage1_dir = self.output_dir / "stage1_detection" if self.output_dir else STAGE_DIRS[1]
@@ -521,6 +746,15 @@ class KabaddiInjuryPipeline:
                     self.last_collision_frame = frame_num
                     self.collision_text = f"COLLISION: Raider {raider_id} hit by Defender {','.join(map(str, colliding_defenders))}"
                     self.save_collision_data(frame_num, raider_id, colliding_defenders)
+                    
+                    # Send collision event to server
+                    send_collision_event(
+                        raider_id=raider_id,
+                        frame=frame_num,
+                        timestamp=timestamp,
+                        defender_ids=colliding_defenders,
+                        severity=collision_impact_score * 100  # Convert to 0-100 scale
+                    )
                     
                     # Log touch event for each defender
                     for defender_id in colliding_defenders:
@@ -613,6 +847,17 @@ class KabaddiInjuryPipeline:
             # Log fall event
             if is_falling and raider_id is not None:
                 severity = fall_info.get("severity", "Unknown")
+                indicators = fall_info.get("indicators", [])
+                
+                # Send fall event to server
+                send_fall_event(
+                    raider_id=raider_id,
+                    frame=frame_num,
+                    timestamp=timestamp,
+                    fall_severity=float(severity) if isinstance(severity, (int, float)) else 0.0,
+                    indicators=indicators
+                )
+                
                 self.raider_status.fall_detected(
                     frame_num,
                     timestamp,
@@ -749,6 +994,23 @@ class KabaddiInjuryPipeline:
                 processing_time=processing_time
             )
             
+            # Send injury risk update event to server (throttled to every N frames)
+            if raider_id is not None and (frame_num - self.last_risk_event_frame) >= self.risk_event_throttle:
+                self.last_risk_event_frame = frame_num
+                send_injury_risk_event(
+                    raider_id=raider_id,
+                    frame=frame_num,
+                    timestamp=timestamp,
+                    risk_score=risk_score_val,
+                    risk_level=risk_data.get("risk_level", "UNKNOWN"),
+                    components={
+                        "fall_severity": fall_severity,
+                        "impact_severity": impact_severity,
+                        "motion_abnormality": motion_abnormality,
+                        "injury_history": risk_data.get("components", {}).get("injury_history", 0.0)
+                    }
+                )
+            
             logger.debug(f"[MAIN PIPELINE] ============ FRAME {frame_num} END (Time: {processing_time:.3f}s) ============")
             
             # Log calculation values after all processing is complete (non-intrusive)
@@ -878,6 +1140,17 @@ def main():
         print(f"Average risk score: {results['metrics']['avg_risk_score']:.1f}")
         print(f"Total fall events: {results['metrics']['total_fall_events']}")
         print(f"Processing time: {results['metrics']['avg_processing_time']:.3f}s per frame")
+        
+        if server_running:
+            print("\n" + "-"*60)
+            print("SERVER STATUS")
+            print("-"*60)
+            print(f"✓ Server is running on {SERVER_URL}")
+            print(f"✓ WebSocket: ws://{SERVER_HOST}:{SERVER_PORT}/ws")
+            print(f"✓ API Docs: {SERVER_URL}/docs")
+            print(f"✓ Real-time events were sent during processing")
+            print("-"*60)
+        
         print("="*60)
     except FileNotFoundError as e:
         print(f"\nERROR: {e}", file=sys.stderr)

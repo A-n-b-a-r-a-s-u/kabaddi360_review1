@@ -1,0 +1,24 @@
+{
+  "session_summary": {
+    "total_events": 1,
+    "raider_id": 5,
+    "raider_detected_at": 2.9,
+    "total_touches": 0,
+    "final_state": "Moving",
+    "finalized_at": "2026-02-26T23:51:09.093069"
+  },
+  "timeline": [
+    {
+      "type": "RAIDER_DETECTED",
+      "timestamp": 2.9,
+      "time_str": "00:02",
+      "message": "\ud83c\udfaf Raider Detected",
+      "details": {
+        "raider_id": 5,
+        "confidence": 100.0,
+        "timestamp": 2.9
+      },
+      "logged_at": "2026-02-26T23:49:59.390403"
+    }
+  ]
+}
