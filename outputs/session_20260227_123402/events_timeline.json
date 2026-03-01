@@ -1,0 +1,1051 @@
+{
+  "session_summary": {
+    "total_events": 80,
+    "raider_id": 6,
+    "raider_detected_at": 1.5,
+    "total_touches": 74,
+    "final_state": "Fallen",
+    "finalized_at": "2026-02-27T12:35:54.469618"
+  },
+  "timeline": [
+    {
+      "type": "RAIDER_DETECTED",
+      "timestamp": 1.5,
+      "time_str": "00:01",
+      "message": "\ud83c\udfaf Raider Detected",
+      "details": {
+        "raider_id": 6,
+        "confidence": 100.0,
+        "timestamp": 1.5
+      },
+      "logged_at": "2026-02-27T12:34:13.915108"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.033333333333333,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 91,
+        "touch_count": 1
+      },
+      "logged_at": "2026-02-27T12:34:26.736186"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.066666666666667,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 92,
+        "touch_count": 2
+      },
+      "logged_at": "2026-02-27T12:34:27.023059"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.1,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 93,
+        "touch_count": 3
+      },
+      "logged_at": "2026-02-27T12:34:27.318395"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.1333333333333333,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 94,
+        "touch_count": 4
+      },
+      "logged_at": "2026-02-27T12:34:27.593860"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.1666666666666665,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 95,
+        "touch_count": 5
+      },
+      "logged_at": "2026-02-27T12:34:27.915920"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.7,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 111,
+        "touch_count": 6
+      },
+      "logged_at": "2026-02-27T12:34:31.854973"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 3.7333333333333334,
+      "time_str": "00:03",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 112,
+        "touch_count": 7
+      },
+      "logged_at": "2026-02-27T12:34:32.180255"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.1,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 123,
+        "touch_count": 8
+      },
+      "logged_at": "2026-02-27T12:34:34.486408"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.1,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 123,
+        "touch_count": 9
+      },
+      "logged_at": "2026-02-27T12:34:34.486941"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.133333333333334,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 5,
+        "frame": 124,
+        "touch_count": 10
+      },
+      "logged_at": "2026-02-27T12:34:34.819248"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.133333333333334,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 124,
+        "touch_count": 11
+      },
+      "logged_at": "2026-02-27T12:34:34.819248"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.166666666666667,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 125,
+        "touch_count": 12
+      },
+      "logged_at": "2026-02-27T12:34:35.136444"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.2,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 126,
+        "touch_count": 13
+      },
+      "logged_at": "2026-02-27T12:34:35.504462"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.233333333333333,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 127,
+        "touch_count": 14
+      },
+      "logged_at": "2026-02-27T12:34:35.801967"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.266666666666667,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 128,
+        "touch_count": 15
+      },
+      "logged_at": "2026-02-27T12:34:36.116626"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.3,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 129,
+        "touch_count": 16
+      },
+      "logged_at": "2026-02-27T12:34:36.432079"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.333333333333333,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 130,
+        "touch_count": 17
+      },
+      "logged_at": "2026-02-27T12:34:36.732350"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.366666666666666,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 131,
+        "touch_count": 18
+      },
+      "logged_at": "2026-02-27T12:34:37.012361"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.4,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 132,
+        "touch_count": 19
+      },
+      "logged_at": "2026-02-27T12:34:37.339064"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.433333333333334,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 133,
+        "touch_count": 20
+      },
+      "logged_at": "2026-02-27T12:34:37.623362"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 4.466666666666667,
+      "time_str": "00:04",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 134,
+        "touch_count": 21
+      },
+      "logged_at": "2026-02-27T12:34:37.907556"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.0,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 150,
+        "touch_count": 22
+      },
+      "logged_at": "2026-02-27T12:34:42.104707"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.033333333333333,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 151,
+        "touch_count": 23
+      },
+      "logged_at": "2026-02-27T12:34:42.405580"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.066666666666666,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 152,
+        "touch_count": 24
+      },
+      "logged_at": "2026-02-27T12:34:42.706580"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.1,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 153,
+        "touch_count": 25
+      },
+      "logged_at": "2026-02-27T12:34:43.022074"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.2,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 156,
+        "touch_count": 26
+      },
+      "logged_at": "2026-02-27T12:34:43.822917"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.233333333333333,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 157,
+        "touch_count": 27
+      },
+      "logged_at": "2026-02-27T12:34:44.148686"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.266666666666667,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 158,
+        "touch_count": 28
+      },
+      "logged_at": "2026-02-27T12:34:44.427113"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.3,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 159,
+        "touch_count": 29
+      },
+      "logged_at": "2026-02-27T12:34:44.736130"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.3,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 159,
+        "touch_count": 30
+      },
+      "logged_at": "2026-02-27T12:34:44.736130"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.333333333333333,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 160,
+        "touch_count": 31
+      },
+      "logged_at": "2026-02-27T12:34:45.036566"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.333333333333333,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 160,
+        "touch_count": 32
+      },
+      "logged_at": "2026-02-27T12:34:45.036566"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.366666666666666,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 161,
+        "touch_count": 33
+      },
+      "logged_at": "2026-02-27T12:34:45.369086"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.366666666666666,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 161,
+        "touch_count": 34
+      },
+      "logged_at": "2026-02-27T12:34:45.369680"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.433333333333334,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 163,
+        "touch_count": 35
+      },
+      "logged_at": "2026-02-27T12:34:45.887592"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.433333333333334,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 163,
+        "touch_count": 36
+      },
+      "logged_at": "2026-02-27T12:34:45.888118"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.933333333333334,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 178,
+        "touch_count": 37
+      },
+      "logged_at": "2026-02-27T12:34:49.500459"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 5.966666666666667,
+      "time_str": "00:05",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 179,
+        "touch_count": 38
+      },
+      "logged_at": "2026-02-27T12:34:49.827094"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.266666666666667,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 188,
+        "touch_count": 39
+      },
+      "logged_at": "2026-02-27T12:34:52.064951"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.266666666666667,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 188,
+        "touch_count": 40
+      },
+      "logged_at": "2026-02-27T12:34:52.065540"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.3,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 20,
+        "frame": 189,
+        "touch_count": 41
+      },
+      "logged_at": "2026-02-27T12:34:52.402061"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.3,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 24,
+        "frame": 189,
+        "touch_count": 42
+      },
+      "logged_at": "2026-02-27T12:34:52.402061"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.666666666666667,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 200,
+        "touch_count": 43
+      },
+      "logged_at": "2026-02-27T12:34:55.080318"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.7,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 201,
+        "touch_count": 44
+      },
+      "logged_at": "2026-02-27T12:34:55.386851"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.733333333333333,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 202,
+        "touch_count": 45
+      },
+      "logged_at": "2026-02-27T12:34:55.685934"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.766666666666667,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 203,
+        "touch_count": 46
+      },
+      "logged_at": "2026-02-27T12:34:56.009221"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.8,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 204,
+        "touch_count": 47
+      },
+      "logged_at": "2026-02-27T12:34:56.299673"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 6.833333333333333,
+      "time_str": "00:06",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 205,
+        "touch_count": 48
+      },
+      "logged_at": "2026-02-27T12:34:56.599000"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.166666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 215,
+        "touch_count": 49
+      },
+      "logged_at": "2026-02-27T12:34:58.720209"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.166666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 215,
+        "touch_count": 50
+      },
+      "logged_at": "2026-02-27T12:34:58.720754"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.2,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 216,
+        "touch_count": 51
+      },
+      "logged_at": "2026-02-27T12:34:59.050813"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.2,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 216,
+        "touch_count": 52
+      },
+      "logged_at": "2026-02-27T12:34:59.050813"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.233333333333333,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 217,
+        "touch_count": 53
+      },
+      "logged_at": "2026-02-27T12:34:59.351659"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.233333333333333,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 217,
+        "touch_count": 54
+      },
+      "logged_at": "2026-02-27T12:34:59.352262"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.266666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 218,
+        "touch_count": 55
+      },
+      "logged_at": "2026-02-27T12:34:59.631698"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.266666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 218,
+        "touch_count": 56
+      },
+      "logged_at": "2026-02-27T12:34:59.632657"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.3,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 219,
+        "touch_count": 57
+      },
+      "logged_at": "2026-02-27T12:34:59.942177"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.3,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 219,
+        "touch_count": 58
+      },
+      "logged_at": "2026-02-27T12:34:59.943181"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.333333333333333,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 220,
+        "touch_count": 59
+      },
+      "logged_at": "2026-02-27T12:35:00.231488"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.333333333333333,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 220,
+        "touch_count": 60
+      },
+      "logged_at": "2026-02-27T12:35:00.232376"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.366666666666666,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 221,
+        "touch_count": 61
+      },
+      "logged_at": "2026-02-27T12:35:00.579932"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.366666666666666,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 221,
+        "touch_count": 62
+      },
+      "logged_at": "2026-02-27T12:35:00.579932"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.4,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 222,
+        "touch_count": 63
+      },
+      "logged_at": "2026-02-27T12:35:00.886586"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.4,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 222,
+        "touch_count": 64
+      },
+      "logged_at": "2026-02-27T12:35:00.887121"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.433333333333334,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 223,
+        "touch_count": 65
+      },
+      "logged_at": "2026-02-27T12:35:01.207371"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.466666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 224,
+        "touch_count": 66
+      },
+      "logged_at": "2026-02-27T12:35:01.565171"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.466666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 224,
+        "touch_count": 67
+      },
+      "logged_at": "2026-02-27T12:35:01.566188"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.5,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 14,
+        "frame": 225,
+        "touch_count": 68
+      },
+      "logged_at": "2026-02-27T12:35:01.846145"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.5,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 225,
+        "touch_count": 69
+      },
+      "logged_at": "2026-02-27T12:35:01.846145"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 7.666666666666667,
+      "time_str": "00:07",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 26,
+        "frame": 230,
+        "touch_count": 70
+      },
+      "logged_at": "2026-02-27T12:35:03.033626"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.866666666666666,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 236,
+        "fall_count": 1
+      },
+      "logged_at": "2026-02-27T12:35:04.678982"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.9,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 237,
+        "fall_count": 2
+      },
+      "logged_at": "2026-02-27T12:35:05.005845"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 7.933333333333334,
+      "time_str": "00:07",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 60.0,
+        "frame": 238,
+        "fall_count": 3
+      },
+      "logged_at": "2026-02-27T12:35:05.286297"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.666666666666666,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 260,
+        "touch_count": 71
+      },
+      "logged_at": "2026-02-27T12:35:10.445027"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.7,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 261,
+        "touch_count": 72
+      },
+      "logged_at": "2026-02-27T12:35:10.774734"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.733333333333333,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 262,
+        "touch_count": 73
+      },
+      "logged_at": "2026-02-27T12:35:11.067220"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 8.733333333333333,
+      "time_str": "00:08",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 262,
+        "fall_count": 4
+      },
+      "logged_at": "2026-02-27T12:35:11.154932"
+    },
+    {
+      "type": "RAIDER_TOUCHED",
+      "timestamp": 8.766666666666667,
+      "time_str": "00:08",
+      "message": "\ud83d\udca5 Raider Touched Defender",
+      "details": {
+        "raider_id": 6,
+        "defender_id": 10,
+        "frame": 263,
+        "touch_count": 74
+      },
+      "logged_at": "2026-02-27T12:35:13.416838"
+    },
+    {
+      "type": "FALL_DETECTED",
+      "timestamp": 8.766666666666667,
+      "time_str": "00:08",
+      "message": "\u274c Fall Detected",
+      "details": {
+        "raider_id": 6,
+        "severity": 50.0,
+        "frame": 263,
+        "fall_count": 5
+      },
+      "logged_at": "2026-02-27T12:35:15.487755"
+    }
+  ]
+}
